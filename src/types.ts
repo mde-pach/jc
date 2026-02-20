@@ -40,6 +40,7 @@ export type JcControlType =
   | 'json'
   | 'readonly'
   | 'component'
+  | 'array'
 
 /** Categories for component-type props */
 export type JcComponentPropKind = 'icon' | 'element' | 'node'

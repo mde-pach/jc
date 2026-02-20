@@ -15,11 +15,36 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
   if (prop.type === 'number') return 'number'
   if (/ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type)) return 'component'
   if (prop.type.includes('=>') || prop.type.includes('Function')) return 'readonly'
-  if (prop.type.endsWith('[]')) return 'json'
+
+  // Any T[] type gets the generic array control
+  if (prop.type.endsWith('[]')) return 'array'
+
   if (prop.type.startsWith('{') || prop.type.startsWith('Array') || prop.type.startsWith('Record'))
     return 'json'
   if (prop.type === 'string' || prop.type === 'enum') return 'text'
   return 'text'
+}
+
+/**
+ * Extract the base item type from an array prop type string.
+ * Returns the item type ('string', 'number', etc.) or null if not an array.
+ *
+ * Also resolves the item "kind" — is each item a primitive, or a component/icon?
+ * This is determined by checking the raw type for known component patterns.
+ */
+export function getArrayItemType(prop: JcPropMeta): {
+  itemType: string
+  isComponent: boolean
+} | null {
+  if (!prop.type.endsWith('[]')) return null
+  const itemType = prop.type.slice(0, -2)
+
+  // Check if the item type is a component (icon, element, etc.)
+  const isComponent =
+    /ReactNode|ReactElement|JSX\.Element|Element/.test(itemType) ||
+    !!(prop.rawType && /Icon|Component|Element/.test(prop.rawType))
+
+  return { itemType, isComponent }
 }
 
 /** Generate a smart default value for a prop based on name + type heuristics */
@@ -53,15 +78,34 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
     return faker.number.int({ min: 0, max: 100 })
   }
 
-  // String arrays — generate a small list of fake items
-  if (prop.type === 'string[]') {
-    if (name.includes('feature') || name.includes('benefit')) {
-      return [faker.lorem.words(3), faker.lorem.words(3), faker.lorem.words(3)]
+  // Array types — generate defaults based on item type
+  if (prop.type.endsWith('[]')) {
+    const info = getArrayItemType(prop)
+    if (!info) return []
+
+    // Component arrays start empty — user adds via picker
+    if (info.isComponent) return []
+
+    if (info.itemType === 'string') {
+      if (name.includes('feature') || name.includes('benefit')) {
+        return [faker.lorem.words(3), faker.lorem.words(3), faker.lorem.words(3)]
+      }
+      if (name.includes('tag') || name.includes('label') || name.includes('categor')) {
+        return [faker.lorem.word(), faker.lorem.word(), faker.lorem.word()]
+      }
+      return [faker.lorem.words(2), faker.lorem.words(2), faker.lorem.words(2)]
     }
-    if (name.includes('tag') || name.includes('label') || name.includes('categor')) {
-      return [faker.lorem.word(), faker.lorem.word(), faker.lorem.word()]
+    if (info.itemType === 'number') {
+      return [
+        faker.number.int({ min: 1, max: 100 }),
+        faker.number.int({ min: 1, max: 100 }),
+        faker.number.int({ min: 1, max: 100 }),
+      ]
     }
-    return [faker.lorem.words(2), faker.lorem.words(2), faker.lorem.words(2)]
+    if (info.itemType === 'boolean') {
+      return [true, false, true]
+    }
+    return []
   }
 
   // Object/array types by name heuristic

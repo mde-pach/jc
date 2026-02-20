@@ -149,7 +149,9 @@ export function ShowcaseControls({
               const kindFixtures =
                 controlType === 'component'
                   ? getFixturesForKind(fixtures, prop.componentKind)
-                  : undefined
+                  : controlType === 'array'
+                    ? fixtures
+                    : undefined
               return (
                 <ShowcaseField
                   key={prop.name}
@@ -160,6 +162,7 @@ export function ShowcaseControls({
                   options={prop.values}
                   componentKind={prop.componentKind}
                   fixtures={kindFixtures}
+                  propMeta={prop}
                   onChange={(v) => onPropChange(prop.name, v)}
                 />
               )
