@@ -21,71 +21,13 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
   return 'text'
 }
 
-/**
- * Available placeholder components for component-type props.
- * Each entry has a label and a key used to resolve the actual React element at render time.
- */
-export const COMPONENT_PLACEHOLDERS = {
-  icon: [
-    { key: 'icon:star', label: 'Star' },
-    { key: 'icon:heart', label: 'Heart' },
-    { key: 'icon:zap', label: 'Zap' },
-    { key: 'icon:bell', label: 'Bell' },
-    { key: 'icon:check', label: 'Check' },
-    { key: 'icon:x', label: 'X' },
-    { key: 'icon:search', label: 'Search' },
-    { key: 'icon:settings', label: 'Settings' },
-    { key: 'icon:user', label: 'User' },
-    { key: 'icon:home', label: 'Home' },
-    { key: 'icon:plus', label: 'Plus' },
-    { key: 'icon:arrow-right', label: 'Arrow Right' },
-    { key: 'icon:calendar', label: 'Calendar' },
-    { key: 'icon:mail', label: 'Mail' },
-    { key: 'icon:tag', label: 'Tag' },
-  ],
-  element: [
-    { key: 'none', label: 'None' },
-    { key: 'icon:star', label: 'Star icon' },
-    { key: 'icon:zap', label: 'Zap icon' },
-    { key: 'text:badge', label: 'Badge text' },
-    { key: 'text:label', label: 'Label text' },
-    { key: 'text:paragraph', label: 'Paragraph' },
-  ],
-  node: [
-    { key: 'none', label: 'None' },
-    { key: 'icon:star', label: 'Star icon' },
-    { key: 'icon:zap', label: 'Zap icon' },
-    { key: 'text:badge', label: 'Badge text' },
-    { key: 'text:label', label: 'Label text' },
-    { key: 'text:paragraph', label: 'Paragraph' },
-  ],
-} as const
-
-/** Get the default placeholder key for a component prop */
-export function getDefaultComponentKey(propName: string, prop: JcPropMeta): string {
-  const kind = prop.componentKind ?? 'node'
-  const name = propName.toLowerCase()
-
-  if (kind === 'icon' || name === 'icon' || name.endsWith('icon')) {
-    return 'icon:star'
-  }
-
-  // For other node/element props, default based on name
-  if (name === 'badge') return 'text:badge'
-  if (name === 'action' || name === 'actions') return 'text:label'
-  if (name === 'separator') return 'none'
-  if (name === 'breadcrumbs') return 'text:label'
-
-  return 'none'
-}
-
 /** Generate a smart default value for a prop based on name + type heuristics */
 export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
   const name = propName.toLowerCase()
 
-  // Component-type props get a placeholder key string
+  // Component-type props are resolved via the fixture system — no default here
   if (prop.componentKind || resolveControlType(prop) === 'component') {
-    return getDefaultComponentKey(propName, prop)
+    return undefined
   }
 
   if (prop.defaultValue !== undefined) {

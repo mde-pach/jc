@@ -3,7 +3,7 @@
 import type { ComponentType } from 'react'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
 import { useTheme, type JcThemeMode } from '../lib/use-theme.js'
-import type { JcMeta } from '../types.js'
+import type { JcFixturePlugin, JcMeta } from '../types.js'
 import { ShowcaseControls } from './showcase-controls.js'
 import { ShowcasePreview } from './showcase-preview.js'
 import { ShowcaseSidebar } from './showcase-sidebar.js'
@@ -30,12 +30,28 @@ const THEME = {
 } as const
 
 interface ShowcaseAppProps {
+  /** Component metadata extracted by the jc CLI */
   meta: JcMeta
+  /** Lazy component loaders keyed by display name */
   registry: Record<string, () => Promise<ComponentType<any>>>
+  /**
+   * Optional fixture plugins providing real components (icons, badges, etc.)
+   * for the showcase to use in prop values and children.
+   * Without fixtures, component-type props fall back to a text input.
+   */
+  fixtures?: JcFixturePlugin[]
 }
 
-export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
-  const state = useShowcaseState(meta)
+/**
+ * Root showcase component. Renders a full-viewport app with:
+ * - Left sidebar: component list with search
+ * - Center: live component preview with code snippet
+ * - Right sidebar: interactive prop controls
+ *
+ * Accepts optional `fixtures` to provide real components from the host app.
+ */
+export function ShowcaseApp({ meta, registry, fixtures }: ShowcaseAppProps) {
+  const state = useShowcaseState(meta, fixtures)
   const { theme, mode, cycle } = useTheme()
   const vars = THEME[theme]
 
@@ -108,6 +124,9 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
                 component={state.selectedComponent}
                 propValues={state.propValues}
                 childrenText={state.childrenText}
+                childrenMode={state.childrenMode}
+                childrenFixtureKey={state.childrenFixtureKey}
+                fixtures={state.resolvedFixtures}
                 registry={registry}
               />
             ) : (
@@ -140,8 +159,13 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
                 component={state.selectedComponent}
                 propValues={state.propValues}
                 childrenText={state.childrenText}
+                childrenMode={state.childrenMode}
+                childrenFixtureKey={state.childrenFixtureKey}
+                fixtures={state.resolvedFixtures}
                 onPropChange={state.setPropValue}
                 onChildrenChange={state.setChildrenText}
+                onChildrenModeChange={state.setChildrenMode}
+                onChildrenFixtureKeyChange={state.setChildrenFixtureKey}
                 onReset={state.resetProps}
               />
             </aside>

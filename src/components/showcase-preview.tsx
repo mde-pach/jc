@@ -1,14 +1,28 @@
 'use client'
 
+/**
+ * Live preview panel for the showcase app.
+ *
+ * Responsibilities:
+ * - Lazy-loads the selected component from the host's registry
+ * - Resolves fixture qualified keys in prop values to real ReactNodes
+ * - Resolves children (text string or fixture) based on the current mode
+ * - Generates a code preview string showing the equivalent JSX
+ * - Wraps the rendered component in an ErrorBoundary for resilience
+ */
+
 import { Component, type ComponentType, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { resolveControlType } from '../lib/faker-map.js'
-import { isIconKey, placeholderToCodeString, resolvePlaceholder } from '../lib/placeholder-components.js'
-import type { JcComponentMeta } from '../types.js'
+import { fixtureToCodeString, resolveFixtureValue } from '../lib/fixtures.js'
+import type { JcComponentMeta, JcResolvedFixture } from '../types.js'
 
 interface ShowcasePreviewProps {
   component: JcComponentMeta
   propValues: Record<string, unknown>
   childrenText: string
+  childrenMode: 'text' | 'fixture'
+  childrenFixtureKey: string | null
+  fixtures: JcResolvedFixture[]
   registry: Record<string, () => Promise<ComponentType<any>>>
 }
 
@@ -16,6 +30,9 @@ export function ShowcasePreview({
   component,
   propValues,
   childrenText,
+  childrenMode,
+  childrenFixtureKey,
+  fixtures,
   registry,
 }: ShowcasePreviewProps) {
   const [LoadedComponent, setLoadedComponent] = useState<ComponentType<any> | null>(null)
@@ -44,9 +61,9 @@ export function ShowcasePreview({
       const propMeta = component.props[key]
       const controlType = propMeta ? resolveControlType(propMeta) : null
 
-      // Resolve component placeholder keys to actual React components/elements
+      // Resolve fixture qualified keys to actual React elements
       if (controlType === 'component' && typeof value === 'string') {
-        const resolved = resolvePlaceholder(value, propMeta?.componentKind)
+        const resolved = resolveFixtureValue(value, fixtures)
         if (resolved !== undefined) {
           result[key] = resolved
         }
@@ -56,7 +73,16 @@ export function ShowcasePreview({
       result[key] = value
     }
     return result
-  }, [propValues, component.props])
+  }, [propValues, component.props, fixtures])
+
+  // Resolve children
+  const resolvedChildren = useMemo(() => {
+    if (!component.acceptsChildren) return undefined
+    if (childrenMode === 'fixture' && childrenFixtureKey) {
+      return resolveFixtureValue(childrenFixtureKey, fixtures) as ReactNode
+    }
+    return childrenText || undefined
+  }, [component.acceptsChildren, childrenMode, childrenFixtureKey, childrenText, fixtures])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -115,7 +141,7 @@ export function ShowcasePreview({
           ) : (
             <ErrorBoundary componentName={component.displayName}>
               <LoadedComponent {...cleanProps}>
-                {component.acceptsChildren ? childrenText : undefined}
+                {resolvedChildren}
               </LoadedComponent>
             </ErrorBoundary>
           )}
@@ -139,17 +165,30 @@ export function ShowcasePreview({
             margin: 0,
           }}
         >
-          <code>{generateCodePreview(component, propValues, childrenText)}</code>
+          <code>
+            {generateCodePreview(
+              component,
+              propValues,
+              childrenText,
+              childrenMode,
+              childrenFixtureKey,
+              fixtures,
+            )}
+          </code>
         </pre>
       </div>
     </div>
   )
 }
 
+/** Build a readable JSX code string for the code preview footer */
 function generateCodePreview(
   component: JcComponentMeta,
   props: Record<string, unknown>,
   children: string,
+  childrenMode: 'text' | 'fixture',
+  childrenFixtureKey: string | null,
+  fixtures: JcResolvedFixture[],
 ): string {
   const name = component.displayName
   const propStrings: string[] = []
@@ -162,13 +201,9 @@ function generateCodePreview(
 
     // Component props: show a readable representation
     if (controlType === 'component' && typeof value === 'string') {
-      if (value === 'none') continue
-      const codeStr = placeholderToCodeString(value, key)
-      if (isIconKey(value)) {
-        propStrings.push(`${key}={${codeStr}}`)
-      } else {
-        propStrings.push(`${key}={${codeStr}}`)
-      }
+      if (!value) continue
+      const codeStr = fixtureToCodeString(value, fixtures)
+      propStrings.push(`${key}={${codeStr}}`)
       continue
     }
 
@@ -185,8 +220,18 @@ function generateCodePreview(
 
   const propsStr = propStrings.length > 0 ? ` ${propStrings.join(' ')}` : ''
 
-  if (component.acceptsChildren && children) {
-    return `<${name}${propsStr}>${children}</${name}>`
+  // Children
+  let childrenStr = ''
+  if (component.acceptsChildren) {
+    if (childrenMode === 'fixture' && childrenFixtureKey) {
+      childrenStr = fixtureToCodeString(childrenFixtureKey, fixtures)
+    } else if (children) {
+      childrenStr = children
+    }
+  }
+
+  if (childrenStr) {
+    return `<${name}${propsStr}>${childrenStr}</${name}>`
   }
   return `<${name}${propsStr} />`
 }
