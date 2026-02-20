@@ -25,6 +25,7 @@ interface ShowcasePreviewProps {
   fixtures: JcResolvedFixture[]
   registry: Record<string, () => Promise<ComponentType<any>>>
   wrapper?: ComponentType<{ children: ReactNode }>
+  viewportWidth?: number
 }
 
 export function ShowcasePreview({
@@ -36,6 +37,7 @@ export function ShowcasePreview({
   fixtures,
   registry,
   wrapper: Wrapper,
+  viewportWidth,
 }: ShowcasePreviewProps) {
   const [LoadedComponent, setLoadedComponent] = useState<ComponentType<any> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -132,6 +134,11 @@ export function ShowcasePreview({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            ...(viewportWidth ? {
+              width: `${viewportWidth}px`,
+              maxWidth: '100%',
+              transition: 'width 0.2s ease',
+            } : {}),
           }}
         >
           {error ? (

@@ -11,6 +11,10 @@
     "./config": {
       "import": "./dist/config.js",
       "types": "./dist/config.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next.js",
+      "types": "./dist/next.d.ts"
     }
   },
   "bin": {

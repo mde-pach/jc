@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentType, ReactNode } from 'react'
+import { type ComponentType, type ReactNode, useState } from 'react'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
 import { useTheme, type JcThemeMode } from '../lib/use-theme.js'
 import type { JcFixturePlugin, JcMeta } from '../types.js'
@@ -59,10 +59,21 @@ interface ShowcaseAppProps {
  *
  * Accepts optional `fixtures` to provide real components from the host app.
  */
+const VIEWPORTS = [
+  { key: 'responsive', label: 'Full', width: undefined },
+  { key: 'mobile', label: '375', width: 375 },
+  { key: 'tablet', label: '768', width: 768 },
+  { key: 'desktop', label: '1280', width: 1280 },
+] as const
+
+type ViewportKey = (typeof VIEWPORTS)[number]['key']
+
 export function ShowcaseApp({ meta, registry, fixtures, wrapper }: ShowcaseAppProps) {
   const state = useShowcaseState(meta, fixtures)
   const { theme, mode, cycle } = useTheme()
   const vars = THEME[theme]
+  const [viewport, setViewport] = useState<ViewportKey>('responsive')
+  const activeViewport = VIEWPORTS.find((v) => v.key === viewport)!
 
   return (
     <div
@@ -97,6 +108,8 @@ export function ShowcaseApp({ meta, registry, fixtures, wrapper }: ShowcaseAppPr
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ViewportPicker active={viewport} onSelect={setViewport} />
+          <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--jc-border)' }} />
           <ThemeToggle mode={mode} theme={theme} onCycle={cycle} />
           <span style={{ fontSize: '10px', opacity: 0.3 }}>
             {meta.components.length} components
@@ -138,6 +151,7 @@ export function ShowcaseApp({ meta, registry, fixtures, wrapper }: ShowcaseAppPr
                 fixtures={state.resolvedFixtures}
                 registry={registry}
                 wrapper={wrapper}
+                viewportWidth={activeViewport.width}
               />
             ) : (
               <div
@@ -254,5 +268,51 @@ function ThemeToggle({
         </svg>
       )}
     </button>
+  )
+}
+
+// ── Viewport picker ──────────────────────────────────────────
+
+function ViewportPicker({
+  active,
+  onSelect,
+}: {
+  active: ViewportKey
+  onSelect: (key: ViewportKey) => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2px',
+        borderRadius: '6px',
+        border: '1px solid var(--jc-border)',
+        padding: '2px',
+      }}
+    >
+      {VIEWPORTS.map((vp) => (
+        <button
+          key={vp.key}
+          type="button"
+          title={vp.width ? `${vp.width}px` : 'Responsive'}
+          onClick={() => onSelect(vp.key)}
+          style={{
+            fontSize: '9px',
+            fontFamily: 'monospace',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            border: 'none',
+            cursor: 'pointer',
+            backgroundColor: active === vp.key ? 'var(--jc-accent)' : 'transparent',
+            color: active === vp.key ? 'var(--jc-accent-fg)' : 'inherit',
+            opacity: active === vp.key ? 1 : 0.4,
+            transition: 'all 0.1s',
+          }}
+        >
+          {vp.label}
+        </button>
+      ))}
+    </div>
   )
 }
