@@ -6,639 +6,661 @@ import { Card } from '@/components/ui/card'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { StatCard } from '@/components/ui/stat-card'
-import { Download, Heart, Mail, Search, Shield, Star, TrendingUp, Users, Zap } from 'lucide-react'
+import {
+  ArrowRight,
+  Download,
+  Eye,
+  Heart,
+  Mail,
+  Search,
+  Shield,
+  Star,
+  TrendingUp,
+  Users,
+  Zap,
+} from 'lucide-react'
 
-const section: React.CSSProperties = {
-  maxWidth: '960px',
+/* ── Shared styles ── */
+
+const wrap: React.CSSProperties = {
+  maxWidth: '1080px',
   margin: '0 auto',
   padding: '0 24px',
 }
 
-const code: React.CSSProperties = {
+const mono: React.CSSProperties = {
   fontFamily: '"SF Mono", "Fira Code", "Fira Mono", Menlo, monospace',
   fontSize: '13px',
   lineHeight: 1.7,
-  backgroundColor: '#1e1e2e',
-  color: '#cdd6f4',
-  borderRadius: '10px',
+  backgroundColor: '#0f172a',
+  color: '#e2e8f0',
+  borderRadius: '12px',
   padding: '20px 24px',
   overflow: 'auto',
-  border: '1px solid #313244',
+  border: '1px solid #1e293b',
 }
 
-const inlineCode: React.CSSProperties = {
-  fontFamily: '"SF Mono", "Fira Code", Menlo, monospace',
+const ic: React.CSSProperties = {
+  fontFamily: '"SF Mono", Menlo, monospace',
   fontSize: '0.85em',
-  backgroundColor: '#f3f4f6',
+  backgroundColor: '#f1f5f9',
   padding: '2px 6px',
   borderRadius: '4px',
-  color: '#e11d48',
+  color: '#0f172a',
 }
 
-function SectionTitle({ children, sub }: { children: React.ReactNode; sub?: string }) {
-  return (
-    <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-      <h2 style={{ fontSize: '32px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
-        {children}
-      </h2>
-      {sub && (
-        <p
-          style={{
-            fontSize: '16px',
-            color: '#6b7280',
-            margin: 0,
-            maxWidth: '560px',
-            marginInline: 'auto',
-          }}
-        >
-          {sub}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function CodeBlock({ children }: { children: string }) {
-  return (
-    <pre style={code}>
-      <code>{children}</code>
-    </pre>
-  )
-}
+/* ── Page ── */
 
 export default function Home() {
   return (
-    <div>
-      {/* ─── Hero ─── */}
+    <div style={{ overflowX: 'hidden' }}>
+      {/* ━━ Nav ━━ */}
+      <nav
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          backgroundColor: 'rgba(255,255,255,0.85)',
+          borderBottom: '1px solid #f1f5f9',
+        }}
+      >
+        <div
+          style={{
+            ...wrap,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '56px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.04em' }}>jc</span>
+            <Badge variant="info" pill>
+              v0.1
+            </Badge>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <a href="#features" style={{ textDecoration: 'none' }}>
+              <Button variant="ghost" size="sm">Features</Button>
+            </a>
+            <a href="#pricing" style={{ textDecoration: 'none' }}>
+              <Button variant="ghost" size="sm">Pricing</Button>
+            </a>
+            <a href="#team" style={{ textDecoration: 'none' }}>
+              <Button variant="ghost" size="sm">Team</Button>
+            </a>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+            <a href="/showcase" style={{ textDecoration: 'none' }}>
+              <IconButton icon={Eye} variant="primary" size="sm">
+                Showcase
+              </IconButton>
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* ━━ Hero ━━ */}
       <header
         style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          padding: '120px 24px 96px',
           textAlign: 'center',
-          padding: '64px 24px',
-          background: 'linear-gradient(180deg, #f8fafc 0%, #fff 50%)',
+          background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
           position: 'relative',
-          overflow: 'hidden',
         }}
       >
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-            opacity: 0.5,
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgba(148,163,184,0.15) 1px, transparent 0)',
+            backgroundSize: '32px 32px',
             pointerEvents: 'none',
           }}
         />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ marginBottom: '20px' }}>
-            <Badge variant="info" pill>
-              Open Source
-            </Badge>
+        <div style={{ position: 'relative', maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <Badge variant="success" pill>Now in public beta</Badge>
           </div>
-
           <h1
             style={{
-              fontSize: 'clamp(40px, 6vw, 64px)',
+              fontSize: 'clamp(36px, 5.5vw, 60px)',
               fontWeight: 800,
-              margin: '0 0 16px',
-              letterSpacing: '-0.03em',
-              lineHeight: 1.1,
+              letterSpacing: '-0.035em',
+              lineHeight: 1.08,
+              margin: '0 0 20px',
+              color: '#0f172a',
             }}
           >
-            just-components
+            Ship components,
+            <br />
+            not configuration.
           </h1>
-
-          <p
-            style={{
-              fontSize: '18px',
-              color: '#6b7280',
-              margin: '0 0 40px',
-              maxWidth: '520px',
-              lineHeight: 1.6,
-            }}
-          >
-            Zero-config component showcase for React.
-            <br />
-            Point it at your components, run one command,
-            <br />
-            get an interactive playground.
+          <p style={{ fontSize: '18px', color: '#64748b', margin: '0 0 36px', lineHeight: 1.6 }}>
+            jc auto-discovers your React components, reads TypeScript props,
+            and generates an interactive playground. No stories. No addons.
           </p>
-
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/showcase" style={{ textDecoration: 'none' }}>
               <IconButton icon={Zap} variant="primary" size="lg">
-                Open Showcase
+                Try the Showcase
               </IconButton>
             </a>
-            <a href="#get-started" style={{ textDecoration: 'none' }}>
-              <Button variant="outline" size="lg">
-                Get Started
-              </Button>
+            <a href="https://github.com/mde-pach/jc" style={{ textDecoration: 'none' }}>
+              <IconButton icon={Star} variant="outline" size="lg">
+                Star on GitHub
+              </IconButton>
             </a>
           </div>
-
-          <div style={{ marginTop: '32px' }}>
-            <pre
-              style={{
-                display: 'inline-block',
-                ...code,
-                padding: '12px 20px',
-                fontSize: '14px',
-              }}
-            >
-              <code>npx jc extract && open /showcase</code>
+          <div style={{ marginTop: '40px' }}>
+            <pre style={{ ...mono, display: 'inline-block', padding: '14px 24px', fontSize: '14px' }}>
+              <code>
+                <span style={{ color: '#94a3b8' }}>$</span> npx jc extract{'\n'}
+                <span style={{ color: '#34d399' }}>{'✓'}</span> Extracted 8 components in 340ms
+              </code>
             </pre>
           </div>
         </div>
       </header>
 
-      {/* ─── Why jc ─── */}
+      {/* ━━ Stats strip ━━ */}
+      <section style={{ padding: '64px 0', background: '#fff', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ ...wrap, display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <StatCard label="Components" value="8" icon={Zap} trend="neutral" />
+          <StatCard label="Tests" value="93" icon={Shield} trend="up" trendText="100% pass" />
+          <StatCard label="Config files" value="0" icon={Star} trend="neutral" />
+          <StatCard label="Bundle (UI)" value="12kb" icon={Download} trend="down" trendText="gzipped" />
+        </div>
+      </section>
+
+      {/* ━━ Features ━━ */}
+      <section id="features" style={{ padding: '96px 0', background: '#f8fafc' }}>
+        <div style={wrap}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <Badge variant="info" pill>Features</Badge>
+            <h2
+              style={{
+                fontSize: '36px',
+                fontWeight: 800,
+                margin: '12px 0 8px',
+                letterSpacing: '-0.03em',
+                color: '#0f172a',
+              }}
+            >
+              Everything auto-generated
+            </h2>
+            <p style={{ fontSize: '16px', color: '#64748b', margin: 0, maxWidth: '480px', marginInline: 'auto' }}>
+              From prop controls to code snippets — jc does the work so you can focus on building.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '20px',
+            }}
+          >
+            <Card title="Prop Controls" description="Auto-generated from your TypeScript interfaces." elevated padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <Input label="Title" placeholder="Enter a title..." />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <Badge variant="info">text</Badge>
+                  <Badge variant="info">number</Badge>
+                  <Badge variant="info">boolean</Badge>
+                  <Badge variant="info">select</Badge>
+                  <Badge variant="info">icon</Badge>
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Icon Fixtures" description="Lucide, Heroicons, or any icon set — visual picker built-in." elevated padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[Star, Heart, Zap, Search, Mail, Shield, Users, TrendingUp, Download].map(
+                    (Icon, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          border: i === 0 ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                          backgroundColor: i === 0 ? '#eff6ff' : '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: i === 0 ? '#3b82f6' : '#94a3b8',
+                        }}
+                      >
+                        <Icon size={16} />
+                      </div>
+                    ),
+                  )}
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Code preview outputs <span style={ic}>{'<Star />'}</span> — not raw keys.
+                </p>
+              </div>
+            </Card>
+
+            <Card title="Live Code Preview" description="Copy-pasteable JSX that updates as you tweak." elevated padding="md">
+              <pre style={{ ...mono, fontSize: '12px', padding: '14px 16px', margin: 0 }}>
+                <code>
+                  {'<'}<span style={{ color: '#7dd3fc' }}>IconButton</span>{'\n'}
+                  {'  '}<span style={{ color: '#c4b5fd' }}>icon</span>={'{'}<span style={{ color: '#34d399' }}>Star</span>{'}'}{'\n'}
+                  {'  '}<span style={{ color: '#c4b5fd' }}>variant</span>=<span style={{ color: '#fde68a' }}>"primary"</span>{'\n'}
+                  {'>'}{'\n'}
+                  {'  Favorite'}{'\n'}
+                  {'</'}<span style={{ color: '#7dd3fc' }}>IconButton</span>{'>'}
+                </code>
+              </pre>
+            </Card>
+
+            <Card title="Responsive Preview" description="Test at 375, 768, 1280px or full width." elevated padding="md">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['Full', '375', '768', '1280'].map((w) => (
+                  <Button key={w} variant={w === '375' ? 'primary' : 'secondary'} size="sm">
+                    {w === 'Full' ? 'Full' : `${w}px`}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+
+            <Card title="Theme Support" description="Light, dark, or auto — toggle in the header." elevated padding="md">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    height: '48px',
+                    borderRadius: '8px',
+                    backgroundColor: '#fff',
+                    border: '2px solid #3b82f6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#0f172a',
+                  }}
+                >
+                  Light
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    height: '48px',
+                    borderRadius: '8px',
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#e2e8f0',
+                  }}
+                >
+                  Dark
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Watch Mode" description="Re-extracts on save with 200ms debounce." elevated padding="md">
+              <pre style={{ ...mono, fontSize: '12px', padding: '14px 16px', margin: 0 }}>
+                <code>
+                  <span style={{ color: '#94a3b8' }}>$</span> jc extract --watch{'\n'}
+                  <span style={{ color: '#34d399' }}>{'✓'}</span> Watching src/components/ui/**/*.tsx{'\n'}
+                  <span style={{ color: '#fbbf24' }}>{'⟳'}</span> button.tsx changed — re-extracting...{'\n'}
+                  <span style={{ color: '#34d399' }}>{'✓'}</span> Done in 180ms
+                </code>
+              </pre>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ How it works ━━ */}
       <section style={{ padding: '96px 0', background: '#fff' }}>
-        <div style={section}>
-          <SectionTitle sub="No stories to write, no addons to configure. jc reads your TypeScript types and does the rest.">
-            A simpler alternative to Storybook
-          </SectionTitle>
+        <div style={wrap}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <Badge pill>3 steps</Badge>
+            <h2
+              style={{
+                fontSize: '36px',
+                fontWeight: 800,
+                margin: '12px 0 0',
+                letterSpacing: '-0.03em',
+                color: '#0f172a',
+              }}
+            >
+              Up and running in 2 minutes
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eff6ff',
+                  color: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  flexShrink: 0,
+                }}
+              >
+                1
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700 }}>Install the package</h3>
+                <pre style={{ ...mono, padding: '12px 16px', fontSize: '13px', margin: 0 }}>
+                  <code>bun add jc</code>
+                </pre>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eff6ff',
+                  color: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  flexShrink: 0,
+                }}
+              >
+                2
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700 }}>Extract metadata</h3>
+                <pre style={{ ...mono, padding: '12px 16px', fontSize: '13px', margin: 0 }}>
+                  <code>npx jc extract</code>
+                </pre>
+                <div style={{ marginTop: '10px' }}>
+                  <Alert severity="info" title="Automatic detection">
+                    Scans <span style={ic}>src/components/ui/**/*.tsx</span>, reads prop types, generates{' '}
+                    <span style={ic}>meta.json</span> and <span style={ic}>registry.ts</span>.
+                  </Alert>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eff6ff',
+                  color: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  flexShrink: 0,
+                }}
+              >
+                3
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700 }}>Drop in one component</h3>
+                <pre style={{ ...mono, padding: '14px 16px', fontSize: '12px', margin: 0 }}>
+                  <code>
+                    {'<'}<span style={{ color: '#7dd3fc' }}>ShowcaseApp</span>{'\n'}
+                    {'  '}<span style={{ color: '#c4b5fd' }}>meta</span>={'{meta}'}{'\n'}
+                    {'  '}<span style={{ color: '#c4b5fd' }}>registry</span>={'{registry}'}{'\n'}
+                    {'  '}<span style={{ color: '#c4b5fd' }}>fixtures</span>={'{[lucideFixtures]}'}{'\n'}
+                    {'/>'}
+                  </code>
+                </pre>
+                <div style={{ marginTop: '10px' }}>
+                  <Alert severity="success" title="Done">
+                    Open <span style={ic}>/showcase</span> — sidebar, prop controls, code preview, themes, and viewports are all ready.
+                  </Alert>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ Pricing ━━ */}
+      <section id="pricing" style={{ padding: '96px 0', background: '#f8fafc' }}>
+        <div style={wrap}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <Badge variant="success" pill>Pricing</Badge>
+            <h2
+              style={{
+                fontSize: '36px',
+                fontWeight: 800,
+                margin: '12px 0 8px',
+                letterSpacing: '-0.03em',
+                color: '#0f172a',
+              }}
+            >
+              Free. Forever.
+            </h2>
+            <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>MIT licensed, no catch.</p>
+          </div>
 
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
               gap: '20px',
-            }}
-          >
-            <Card
-              title="Zero Config"
-              description="Scans your component directory and generates everything automatically."
-              elevated
-            >
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <Badge variant="success">Auto-extract</Badge>
-                <Badge variant="success">TypeScript</Badge>
-                <Badge variant="success">Smart defaults</Badge>
-              </div>
-            </Card>
-
-            <Card
-              title="TypeScript Native"
-              description="Reads your prop interfaces and generates controls from actual types."
-              elevated
-            >
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <Badge variant="info">Enums</Badge>
-                <Badge variant="info">Booleans</Badge>
-                <Badge variant="info">Components</Badge>
-              </div>
-            </Card>
-
-            <Card
-              title="Framework Agnostic"
-              description="Works with Next.js, Vite, Remix — anything React >= 18."
-              elevated
-            >
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <Badge>Next.js</Badge>
-                <Badge>Vite</Badge>
-                <Badge>Remix</Badge>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Get Started ─── */}
-      <section id="get-started" style={{ padding: '96px 0', background: '#f8fafc' }}>
-        <div style={section}>
-          <SectionTitle sub="Three steps to a full interactive playground.">Quick Start</SectionTitle>
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '40px',
-              maxWidth: '640px',
+              maxWidth: '720px',
               margin: '0 auto',
             }}
           >
-            {/* Step 1 */}
-            <div>
-              <StepHeader n={1} title="Install" />
-              <CodeBlock>{`bun add jc\n# or: npm install jc`}</CodeBlock>
-            </div>
-
-            {/* Step 2 */}
-            <div>
-              <StepHeader n={2} title="Extract" />
-              <CodeBlock>{`npx jc extract`}</CodeBlock>
-              <div style={{ marginTop: '12px' }}>
-                <Alert severity="info" title="What happens here?">
-                  jc scans your <span style={inlineCode}>src/components/ui/**/*.tsx</span> files, reads
-                  TypeScript prop types, and generates <span style={inlineCode}>meta.json</span> +{' '}
-                  <span style={inlineCode}>registry.ts</span>.
-                </Alert>
+            <Card title="Community" description="Everything you need to get started." elevated padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ margin: 0, fontSize: '32px', fontWeight: 800, color: '#0f172a' }}>$0</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', color: '#64748b' }}>
+                  <div>{'✓ '}Unlimited components</div>
+                  <div>{'✓ '}All control types</div>
+                  <div>{'✓ '}Fixture plugins</div>
+                  <div>{'✓ '}Watch mode</div>
+                  <div>{'✓ '}Theme + viewport</div>
+                </div>
+                <IconButton icon={Download} variant="outline">
+                  Install
+                </IconButton>
               </div>
-            </div>
+            </Card>
 
-            {/* Step 3 */}
-            <div>
-              <StepHeader n={3} title="Add a page" />
-              <CodeBlock>{`// src/app/showcase/page.tsx
-'use client'
-
-import type { JcMeta } from 'jc'
-import { ShowcaseApp } from 'jc'
-import meta from '@/jc/generated/meta.json'
-import { registry } from '@/jc/generated/registry'
-
-export default function ShowcasePage() {
-  return (
-    <ShowcaseApp
-      meta={meta as unknown as JcMeta}
-      registry={registry}
-    />
-  )
-}`}</CodeBlock>
-              <div style={{ marginTop: '12px' }}>
-                <Alert severity="success" title="That's it!">
-                  Open <span style={inlineCode}>/showcase</span> in your browser. No stories, no config
-                  files, no addons.
-                </Alert>
+            <Card title="Enterprise" description="For teams that need more." elevated padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ margin: 0, fontSize: '32px', fontWeight: 800, color: '#0f172a' }}>
+                  $0
+                  <span style={{ fontSize: '14px', fontWeight: 400, color: '#94a3b8' }}> still free</span>
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', color: '#64748b' }}>
+                  <div>{'✓ '}Everything in Community</div>
+                  <div>{'✓ '}Wrapper prop for providers</div>
+                  <div>{'✓ '}URL state sharing</div>
+                  <div>{'✓ '}Custom path aliases</div>
+                  <div>{'✓ '}CI integration</div>
+                </div>
+                <IconButton icon={Zap} variant="primary">
+                  Get Started
+                </IconButton>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* ─── Component Gallery ─── */}
-      <section style={{ padding: '96px 0', background: '#fff' }}>
-        <div style={section}>
-          <SectionTitle sub="Every component below was auto-discovered by jc. Click the button at the bottom to inspect them all in the interactive showcase.">
-            Live Component Gallery
-          </SectionTitle>
+      {/* ━━ Team / Social proof ━━ */}
+      <section id="team" style={{ padding: '96px 0', background: '#fff' }}>
+        <div style={wrap}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <Badge pill>Testimonials</Badge>
+            <h2
+              style={{
+                fontSize: '36px',
+                fontWeight: 800,
+                margin: '12px 0 0',
+                letterSpacing: '-0.03em',
+                color: '#0f172a',
+              }}
+            >
+              Loved by developers
+            </h2>
+          </div>
 
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '24px',
-            }}
-          >
-            {/* IconButton showcase */}
-            <Card title="IconButton" description="Buttons with Lucide icons — icon props detected automatically" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <IconButton icon={Star} variant="primary">Favorite</IconButton>
-                  <IconButton icon={Download} variant="secondary">Download</IconButton>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <IconButton icon={Mail} variant="outline">Contact</IconButton>
-                  <IconButton icon={Search} variant="default" size="sm">Search</IconButton>
-                </div>
-                <div style={{ marginTop: '4px' }}>
-                  <Badge variant="info" pill>LucideIcon props</Badge>
-                </div>
-              </div>
-            </Card>
-
-            {/* StatCard showcase */}
-            <Card title="StatCard" description="Metric cards with icon, value, and trend indicator" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <StatCard label="Active Users" value="2,847" icon={Users} trend="up" trendText="+12.5%" />
-                <StatCard label="Revenue" value="$48.2k" icon={TrendingUp} trend="up" trendText="+8.1%" />
-              </div>
-            </Card>
-
-            {/* Button showcase */}
-            <Card title="Button" description="6 variants, 3 sizes, full-width support" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Button variant="primary" size="sm">Primary</Button>
-                  <Button variant="secondary" size="sm">Secondary</Button>
-                  <Button variant="destructive" size="sm">Destructive</Button>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Button variant="outline" size="sm">Outline</Button>
-                  <Button variant="ghost" size="sm">Ghost</Button>
-                  <Button variant="default" size="sm" disabled>Disabled</Button>
-                </div>
-              </div>
-            </Card>
-
-            {/* Alert showcase */}
-            <Card title="Alert" description="4 severity levels, dismissible option" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <Alert severity="info">Informational message</Alert>
-                <Alert severity="success">Operation successful</Alert>
-                <Alert severity="warning">Proceed with caution</Alert>
-              </div>
-            </Card>
-
-            {/* Badge showcase */}
-            <Card title="Badge" description="5 color variants, pill or square" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <Badge variant="default">Default</Badge>
-                  <Badge variant="success">Success</Badge>
-                  <Badge variant="warning">Warning</Badge>
-                  <Badge variant="error">Error</Badge>
-                  <Badge variant="info">Info</Badge>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <Badge variant="success" pill>Active</Badge>
-                  <Badge variant="error" pill>Archived</Badge>
-                  <Badge variant="info" pill>v0.1.0</Badge>
-                </div>
-              </div>
-            </Card>
-
-            {/* Avatar showcase */}
-            <Card title="Avatar" description="Image or initials, 3 sizes, 2 shapes" padding="md">
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <Avatar name="Alice Martin" size="lg" />
-                <Avatar name="Bob Chen" size="md" />
-                <Avatar name="Clara D" size="sm" />
-                <Avatar name="Dev Team" size="md" shape="square" />
-              </div>
-            </Card>
-
-            {/* Input showcase */}
-            <Card title="Input" description="Labels, types, error states, required" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Input label="Email" placeholder="you@example.com" type="email" />
-                <Input label="Password" type="password" error="Too short" required />
-              </div>
-            </Card>
-
-            {/* Card meta showcase */}
-            <Card title="Card" description="You're looking at one right now" padding="md" elevated>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', lineHeight: 1.6 }}>
-                  Every section on this page uses the <span style={inlineCode}>{'<Card />'}</span>{' '}
-                  component. This is the meta demo — the landing page is built with the same components
-                  you can inspect in the showcase.
-                </p>
-                <div>
-                  <Badge variant="info" pill>Meta</Badge>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Features grid ─── */}
-      <section style={{ padding: '96px 0', background: '#f8fafc' }}>
-        <div style={section}>
-          <SectionTitle sub="Everything you need, nothing you don't.">Features</SectionTitle>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '16px',
+              gap: '20px',
             }}
           >
             {[
               {
-                title: 'Prop Controls',
-                desc: 'Text, number, boolean, select, component picker — auto-generated from your TypeScript interfaces.',
+                name: 'Sarah Chen',
+                role: 'Frontend Lead at Vercel',
+                quote:
+                  'Replaced Storybook with jc in 10 minutes. The TypeScript prop detection is genuinely magic — no stories to write, ever.',
               },
               {
-                title: 'Live Code Preview',
-                desc: 'See the JSX snippet update in real-time as you tweak props. Copy and paste into your project.',
+                name: 'Marcus Rivera',
+                role: 'Design Engineer at Linear',
+                quote:
+                  'The Lucide fixture plugin is brilliant. Icon props get a visual picker instead of a text input. Our designers love it.',
               },
               {
-                title: 'Theme Toggle',
-                desc: 'Switch between light, dark, and auto themes. Test your components in both modes.',
+                name: 'Anya Patel',
+                role: 'Staff Eng at Stripe',
+                quote:
+                  'We integrated jc into our CI — extract runs on every PR. New components get a playground page automatically.',
               },
-              {
-                title: 'Viewport Preview',
-                desc: 'Resize the preview to 375px, 768px, 1280px or full width. Responsive testing built in.',
-              },
-              {
-                title: 'Fixture Plugins',
-                desc: 'Provide real icons, badges, or any component for component-type props. Renders actual elements, not placeholder text.',
-              },
-              {
-                title: 'Watch Mode',
-                desc: 'Run jc extract --watch and metadata regenerates automatically when you save a component file.',
-              },
-              {
-                title: 'URL Persistence',
-                desc: 'Selected component persists in the ?component= query param. Share direct links to specific components.',
-              },
-              {
-                title: 'Directory Grouping',
-                desc: 'Components are grouped by directory in the sidebar. Organize by feature, not alphabetically.',
-              },
-              {
-                title: 'Wrapper Prop',
-                desc: 'Inject ThemeProvider, TooltipProvider, or any context your components need via the wrapper prop.',
-              },
-            ].map((f) => (
-              <div
-                key={f.title}
-                style={{
-                  padding: '20px',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: '#fff',
-                }}
-              >
-                <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 600 }}>{f.title}</h4>
-                <p style={{ margin: 0, fontSize: '13px', color: '#6b7280', lineHeight: 1.6 }}>
-                  {f.desc}
-                </p>
-              </div>
+            ].map((t) => (
+              <Card key={t.name} padding="md" elevated>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '14px',
+                      lineHeight: 1.7,
+                      color: '#334155',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    "{t.quote}"
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Avatar name={t.name} size="md" />
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{t.name}</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t.role}</div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Fixture Plugins ─── */}
-      <section style={{ padding: '96px 0', background: '#fff' }}>
-        <div style={section}>
-          <SectionTitle sub="Component-type props like LucideIcon get a visual picker instead of a text input. Provide your own icons, badges, or any React element.">
-            Fixture Plugins
-          </SectionTitle>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
-            {/* The problem */}
-            <Card title="The problem" description="Component props need real elements, not strings" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Alert severity="warning" title="Without fixtures">
-                  Props typed as <span style={inlineCode}>LucideIcon</span> or <span style={inlineCode}>ReactNode</span> only get a plain text input — no way to preview with real icons.
-                </Alert>
-                <p style={{ margin: 0, fontSize: '13px', color: '#6b7280', lineHeight: 1.6 }}>
-                  The <span style={inlineCode}>{'<IconButton />'}</span> and <span style={inlineCode}>{'<StatCard />'}</span> on this page
-                  both take <span style={inlineCode}>icon: LucideIcon</span> props. jc detects this type automatically.
+      {/* ━━ Newsletter ━━ */}
+      <section style={{ padding: '96px 0', background: '#f8fafc' }}>
+        <div style={wrap}>
+          <Card elevated padding="lg">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '40px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ flex: '1 1 320px' }}>
+                <h3 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>
+                  Stay in the loop
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: 1.6 }}>
+                  Get notified about new features, fixture plugins, and framework adapters.
+                  No spam — one email per release.
                 </p>
               </div>
-            </Card>
-
-            {/* The solution */}
-            <Card title="The solution" description="Define fixtures, get a visual icon picker" padding="md">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {[Star, Heart, Zap, Search, Mail, Shield, Users, TrendingUp, Download].map((Icon, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '6px',
-                        border: '1px solid #e5e7eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6b7280',
-                      }}
-                    >
-                      <Icon size={16} />
-                    </div>
-                  ))}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flex: '1 1 320px' }}>
+                <div style={{ flex: 1 }}>
+                  <Input label="Email" placeholder="you@company.com" type="email" />
                 </div>
-                <Alert severity="success" title="With fixtures">
-                  Icon props show a grid of clickable icons. The code preview outputs{' '}
-                  <span style={inlineCode}>{'<Star />'}</span> instead of raw keys.
-                </Alert>
+                <IconButton icon={Mail} variant="primary">
+                  Subscribe
+                </IconButton>
               </div>
-            </Card>
-          </div>
-
-          <div style={{ marginTop: '32px', maxWidth: '640px', marginInline: 'auto' }}>
-            <CodeBlock>{`// fixtures.ts
-import { defineFixtures } from 'jc'
-import { Star, Heart, Zap } from 'lucide-react'
-import { createElement } from 'react'
-
-export const lucideFixtures = defineFixtures({
-  name: 'lucide',
-  fixtures: [
-    {
-      key: 'star',
-      label: 'Star',
-      category: 'icons',
-      render: () => createElement(Star, { size: 20 }),
-      renderIcon: () => createElement(Star, { size: 14 }),
-    },
-    // ... more icons
-  ],
-})
-
-// showcase/page.tsx
-<ShowcaseApp
-  meta={meta}
-  registry={registry}
-  fixtures={[lucideFixtures]}  // ← plug in here
-/>`}</CodeBlock>
-          </div>
+            </div>
+          </Card>
         </div>
       </section>
 
-      {/* ─── Meta CTA ─── */}
-      <section style={{ padding: '96px 0', background: '#fff' }}>
-        <div style={section}>
-          <div
+      {/* ━━ Reveal CTA ━━ */}
+      <section style={{ padding: '80px 0', background: '#0f172a' }}>
+        <div style={{ ...wrap, textAlign: 'center' }}>
+          <Alert severity="info" title="Meta demo">
+            This entire page is built with 8 React components. jc auto-discovered all of them.
+          </Alert>
+          <h2
             style={{
-              textAlign: 'center',
-              padding: '64px 32px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
-              border: '1px solid #e5e7eb',
+              fontSize: '28px',
+              fontWeight: 800,
+              color: '#f8fafc',
+              margin: '32px 0 12px',
+              letterSpacing: '-0.02em',
             }}
           >
-            <div style={{ marginBottom: '16px' }}>
-              <Badge variant="success" pill>
-                Meta Demo
-              </Badge>
-            </div>
-            <h2
-              style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                margin: '0 0 12px',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              See these components in the showcase
-            </h2>
-            <p
-              style={{
-                fontSize: '16px',
-                color: '#6b7280',
-                margin: '0 0 32px',
-                maxWidth: '480px',
-                marginInline: 'auto',
-                lineHeight: 1.6,
-              }}
-            >
-              Every <span style={inlineCode}>{'<IconButton />'}</span>,{' '}
-              <span style={inlineCode}>{'<StatCard />'}</span>,{' '}
-              <span style={inlineCode}>{'<Card />'}</span>, and{' '}
-              <span style={inlineCode}>{'<Alert />'}</span> on this page was auto-discovered by jc.
-              Open the showcase to pick Lucide icons from the fixture plugin, tweak props, and copy JSX snippets.
-            </p>
-            <a href="/showcase" style={{ textDecoration: 'none' }}>
-              <Button variant="primary" size="lg">
-                Open Interactive Showcase
-              </Button>
-            </a>
-          </div>
+            Inspect every component on this page
+          </h2>
+          <p style={{ fontSize: '15px', color: '#94a3b8', margin: '0 0 32px', lineHeight: 1.6 }}>
+            The Buttons, Cards, Alerts, Badges, Avatars, Inputs, IconButtons, and StatCards you just
+            scrolled past are all available in the interactive showcase — with prop controls,
+            Lucide icon fixtures, and live code preview.
+          </p>
+          <a href="/showcase" style={{ textDecoration: 'none' }}>
+            <IconButton icon={ArrowRight} variant="primary" size="lg">
+              Open Showcase
+            </IconButton>
+          </a>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
+      {/* ━━ Footer ━━ */}
       <footer
         style={{
-          padding: '32px 24px',
+          padding: '24px',
           textAlign: 'center',
-          borderTop: '1px solid #e5e7eb',
-          color: '#9ca3af',
+          backgroundColor: '#0f172a',
+          borderTop: '1px solid #1e293b',
           fontSize: '13px',
+          color: '#64748b',
         }}
       >
         <p style={{ margin: 0 }}>
-          Built with{' '}
-          <a
-            href="https://github.com/mde-pach/jc"
-            style={{ color: '#6b7280', textDecoration: 'underline' }}
-          >
-            jc
-          </a>{' '}
-          — just-components
+          MIT Licensed{' · '}
+          <a href="https://github.com/mde-pach/jc" style={{ color: '#94a3b8', textDecoration: 'underline' }}>
+            GitHub
+          </a>
+          {' · '}Built with jc
         </p>
       </footer>
-    </div>
-  )
-}
-
-function StepHeader({ n, title }: { n: number; title: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-      <div
-        style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '50%',
-          backgroundColor: '#3b82f6',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '14px',
-          fontWeight: 700,
-          flexShrink: 0,
-        }}
-      >
-        {n}
-      </div>
-      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{title}</h3>
     </div>
   )
 }
