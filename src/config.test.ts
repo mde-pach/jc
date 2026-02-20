@@ -36,11 +36,22 @@ describe('resolveConfig', () => {
     expect(config.outputDir).toBe('generated')
   })
 
-  it('uses user-provided arrays when specified', () => {
+  it('merges user arrays with defaults (union)', () => {
     const config = resolveConfig({
       excludeFiles: ['custom.tsx'],
     })
-    expect(config.excludeFiles).toEqual(['custom.tsx'])
+    // Should contain both defaults and user values
+    expect(config.excludeFiles).toContain('custom.tsx')
+    expect(config.excludeFiles).toContain('index.ts')
+    expect(config.excludeFiles).toContain('toaster.tsx')
+  })
+
+  it('deduplicates when user repeats a default value', () => {
+    const config = resolveConfig({
+      excludeFiles: ['index.ts', 'custom.tsx'],
+    })
+    const count = config.excludeFiles!.filter((f) => f === 'index.ts').length
+    expect(count).toBe(1)
   })
 
   it('falls back to default arrays when not provided', () => {
@@ -49,6 +60,20 @@ describe('resolveConfig', () => {
     expect(config.excludeComponents).toEqual(defaultConfig.excludeComponents)
     expect(config.filteredProps).toEqual(defaultConfig.filteredProps)
     expect(config.filteredPropPatterns).toEqual(defaultConfig.filteredPropPatterns)
+  })
+
+  it('merges all array config fields', () => {
+    const config = resolveConfig({
+      excludeComponents: ['MyCustomComponent'],
+      filteredProps: ['customProp'],
+      filteredPropPatterns: ['^custom-'],
+    })
+    expect(config.excludeComponents).toContain('MyCustomComponent')
+    expect(config.excludeComponents).toContain('DialogPortal')
+    expect(config.filteredProps).toContain('customProp')
+    expect(config.filteredProps).toContain('ref')
+    expect(config.filteredPropPatterns).toContain('^custom-')
+    expect(config.filteredPropPatterns).toContain('^aria-')
   })
 
   it('respects custom pathAlias', () => {

@@ -33,15 +33,21 @@ export const defaultConfig: JcConfig = {
   pathAlias: { '@/': 'src/' },
 }
 
-/** Merge user config with defaults */
+/** Deduplicated union of two arrays */
+function mergeArrays(defaults: string[], user: string[] | undefined): string[] {
+  if (!user) return defaults
+  return [...new Set([...defaults, ...user])]
+}
+
+/** Merge user config with defaults — arrays are merged (union), not replaced */
 export function resolveConfig(userConfig: Partial<JcConfig>): JcConfig {
   return {
     ...defaultConfig,
     ...userConfig,
-    excludeFiles: userConfig.excludeFiles ?? defaultConfig.excludeFiles,
-    excludeComponents: userConfig.excludeComponents ?? defaultConfig.excludeComponents,
-    filteredProps: userConfig.filteredProps ?? defaultConfig.filteredProps,
-    filteredPropPatterns: userConfig.filteredPropPatterns ?? defaultConfig.filteredPropPatterns,
+    excludeFiles: mergeArrays(defaultConfig.excludeFiles ?? [], userConfig.excludeFiles),
+    excludeComponents: mergeArrays(defaultConfig.excludeComponents ?? [], userConfig.excludeComponents),
+    filteredProps: mergeArrays(defaultConfig.filteredProps ?? [], userConfig.filteredProps),
+    filteredPropPatterns: mergeArrays(defaultConfig.filteredPropPatterns ?? [], userConfig.filteredPropPatterns),
     pathAlias: userConfig.pathAlias ?? defaultConfig.pathAlias,
   }
 }

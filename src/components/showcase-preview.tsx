@@ -24,6 +24,7 @@ interface ShowcasePreviewProps {
   childrenFixtureKey: string | null
   fixtures: JcResolvedFixture[]
   registry: Record<string, () => Promise<ComponentType<any>>>
+  wrapper?: ComponentType<{ children: ReactNode }>
 }
 
 export function ShowcasePreview({
@@ -34,6 +35,7 @@ export function ShowcasePreview({
   childrenFixtureKey,
   fixtures,
   registry,
+  wrapper: Wrapper,
 }: ShowcasePreviewProps) {
   const [LoadedComponent, setLoadedComponent] = useState<ComponentType<any> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -140,9 +142,17 @@ export function ShowcasePreview({
             </div>
           ) : (
             <ErrorBoundary componentName={component.displayName}>
-              <LoadedComponent {...cleanProps}>
-                {resolvedChildren}
-              </LoadedComponent>
+              {Wrapper ? (
+                <Wrapper>
+                  <LoadedComponent {...cleanProps}>
+                    {resolvedChildren}
+                  </LoadedComponent>
+                </Wrapper>
+              ) : (
+                <LoadedComponent {...cleanProps}>
+                  {resolvedChildren}
+                </LoadedComponent>
+              )}
             </ErrorBoundary>
           )}
         </div>

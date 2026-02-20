@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
 import { useTheme, type JcThemeMode } from '../lib/use-theme.js'
 import type { JcFixturePlugin, JcMeta } from '../types.js'
@@ -40,6 +40,15 @@ interface ShowcaseAppProps {
    * Without fixtures, component-type props fall back to a text input.
    */
   fixtures?: JcFixturePlugin[]
+  /**
+   * Optional wrapper component applied around each previewed component.
+   * Use this to inject context providers (theme, router, i18n, etc.)
+   * that your components need to render correctly.
+   *
+   * @example
+   * wrapper={({ children }) => <ThemeProvider>{children}</ThemeProvider>}
+   */
+  wrapper?: ComponentType<{ children: ReactNode }>
 }
 
 /**
@@ -50,7 +59,7 @@ interface ShowcaseAppProps {
  *
  * Accepts optional `fixtures` to provide real components from the host app.
  */
-export function ShowcaseApp({ meta, registry, fixtures }: ShowcaseAppProps) {
+export function ShowcaseApp({ meta, registry, fixtures, wrapper }: ShowcaseAppProps) {
   const state = useShowcaseState(meta, fixtures)
   const { theme, mode, cycle } = useTheme()
   const vars = THEME[theme]
@@ -128,6 +137,7 @@ export function ShowcaseApp({ meta, registry, fixtures }: ShowcaseAppProps) {
                 childrenFixtureKey={state.childrenFixtureKey}
                 fixtures={state.resolvedFixtures}
                 registry={registry}
+                wrapper={wrapper}
               />
             ) : (
               <div

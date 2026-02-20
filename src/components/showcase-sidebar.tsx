@@ -18,11 +18,21 @@ export function ShowcaseSidebar({
   onSelect,
 }: ShowcaseSidebarProps) {
   const grouped = new Map<string, JcComponentMeta[]>()
+  // Find common prefix to strip from paths (e.g. 'src/components/')
+  const allDirs = components.map((c) => c.filePath.replace(/\/[^/]+$/, ''))
+  const commonPrefix = allDirs.length > 0
+    ? allDirs.reduce((prefix, dir) => {
+        while (dir && !dir.startsWith(prefix)) {
+          prefix = prefix.replace(/[^/]*\/$/, '')
+        }
+        return prefix
+      }, `${allDirs[0]}/`)
+    : ''
   for (const comp of components) {
-    const fileName = comp.filePath.split('/').pop()?.replace('.tsx', '') ?? 'unknown'
-    const list = grouped.get(fileName) ?? []
+    const relativePath = comp.filePath.slice(commonPrefix.length).replace(/\.tsx$/, '')
+    const list = grouped.get(relativePath) ?? []
     list.push(comp)
-    grouped.set(fileName, list)
+    grouped.set(relativePath, list)
   }
 
   return (
