@@ -1,0 +1,309 @@
+{
+  "generatedAt": "2026-02-20T22:05:01.863Z",
+  "componentDir": "src/components/ui/**/*.tsx",
+  "components": [
+    {
+      "displayName": "Alert",
+      "filePath": "src/components/ui/alert.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Alert title",
+          "isChildren": false
+        },
+        "severity": {
+          "name": "severity",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "info",
+            "success",
+            "warning",
+            "error"
+          ],
+          "required": false,
+          "defaultValue": "info",
+          "description": "Severity level",
+          "isChildren": false
+        },
+        "dismissible": {
+          "name": "dismissible",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the alert can be dismissed",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Avatar",
+      "filePath": "src/components/ui/avatar.tsx",
+      "description": "",
+      "props": {
+        "src": {
+          "name": "src",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Image URL",
+          "isChildren": false
+        },
+        "name": {
+          "name": "name",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "",
+          "description": "Alt text / user name (used for initials fallback)",
+          "isChildren": false
+        },
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Avatar size",
+          "isChildren": false
+        },
+        "shape": {
+          "name": "shape",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "circle",
+            "square"
+          ],
+          "required": false,
+          "defaultValue": "circle",
+          "description": "Shape variant",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "Badge",
+      "filePath": "src/components/ui/badge.tsx",
+      "description": "",
+      "props": {
+        "variant": {
+          "name": "variant",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "default",
+            "success",
+            "warning",
+            "error",
+            "info"
+          ],
+          "required": false,
+          "defaultValue": "default",
+          "description": "Badge color variant",
+          "isChildren": false
+        },
+        "pill": {
+          "name": "pill",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Rounded pill shape",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Button",
+      "filePath": "src/components/ui/button.tsx",
+      "description": "",
+      "props": {
+        "variant": {
+          "name": "variant",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "default",
+            "primary",
+            "secondary",
+            "destructive",
+            "outline",
+            "ghost"
+          ],
+          "required": false,
+          "defaultValue": "default",
+          "description": "Visual style variant",
+          "isChildren": false
+        },
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Button size",
+          "isChildren": false
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the button is disabled",
+          "isChildren": false
+        },
+        "fullWidth": {
+          "name": "fullWidth",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Full width button",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Card",
+      "filePath": "src/components/ui/card.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Card title displayed in the header",
+          "isChildren": false
+        },
+        "description": {
+          "name": "description",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional description below the title",
+          "isChildren": false
+        },
+        "elevated": {
+          "name": "elevated",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether to add a shadow",
+          "isChildren": false
+        },
+        "padding": {
+          "name": "padding",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Padding size",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Input",
+      "filePath": "src/components/ui/input.tsx",
+      "description": "",
+      "props": {
+        "label": {
+          "name": "label",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Input label displayed above the field",
+          "isChildren": false
+        },
+        "placeholder": {
+          "name": "placeholder",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Placeholder text",
+          "isChildren": false
+        },
+        "value": {
+          "name": "value",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Current value",
+          "isChildren": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "text",
+            "email",
+            "password",
+            "url"
+          ],
+          "required": false,
+          "defaultValue": "text",
+          "description": "Input type",
+          "isChildren": false
+        },
+        "error": {
+          "name": "error",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Error message shown below the field",
+          "isChildren": false
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the input is disabled",
+          "isChildren": false
+        },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the field is required",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    }
+  ]
+}
