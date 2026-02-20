@@ -82,6 +82,12 @@ export interface JcFixture {
   render: () => ReactNode
   /** Optional small preview (14-16px) for the picker grid; falls back to render() */
   renderIcon?: () => ReactNode
+  /**
+   * Optional raw component constructor for icon-kind props (e.g. LucideIcon).
+   * When a prop expects a component type rather than a rendered element,
+   * this value is passed instead of calling render().
+   */
+  component?: React.ComponentType<any>
 }
 
 /**

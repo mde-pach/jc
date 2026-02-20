@@ -65,9 +65,11 @@ export function ShowcasePreview({
       const propMeta = component.props[key]
       const controlType = propMeta ? resolveControlType(propMeta) : null
 
-      // Resolve fixture qualified keys to actual React elements
+      // Resolve fixture qualified keys to actual React elements (or constructors for icons)
       if (controlType === 'component' && typeof value === 'string') {
-        const resolved = resolveFixtureValue(value, fixtures)
+        const propMeta2 = component.props[key]
+        const isIcon = propMeta2?.componentKind === 'icon'
+        const resolved = resolveFixtureValue(value, fixtures, isIcon)
         if (resolved !== undefined) {
           result[key] = resolved
         }

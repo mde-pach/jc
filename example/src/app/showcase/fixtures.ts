@@ -27,6 +27,7 @@ function icon(Comp: typeof Star, size = 20) {
   return {
     render: () => createElement(Comp, { size }),
     renderIcon: () => createElement(Comp, { size: 14 }),
+    component: Comp,
   }
 }
 

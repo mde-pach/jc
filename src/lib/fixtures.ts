@@ -30,14 +30,22 @@ export function resolveFixturePlugins(
   return resolved
 }
 
-/** Look up a fixture by its qualified key and call render() */
+/**
+ * Look up a fixture by its qualified key.
+ * If `asConstructor` is true and the fixture has a `component` field,
+ * returns the raw component constructor (for icon-kind props like LucideIcon).
+ * Otherwise calls render() to return a ReactElement.
+ */
 export function resolveFixtureValue(
   qualifiedKey: string | null | undefined,
   fixtures: JcResolvedFixture[],
+  asConstructor?: boolean,
 ): unknown {
   if (!qualifiedKey) return undefined
   const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
-  return fixture?.render()
+  if (!fixture) return undefined
+  if (asConstructor && fixture.component) return fixture.component
+  return fixture.render()
 }
 
 /** Convert a qualified key to a readable JSX code string, e.g. 'lucide/star' → '<Star />' */
