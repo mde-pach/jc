@@ -3,7 +3,10 @@ import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
+import { StatCard } from '@/components/ui/stat-card'
+import { Download, Heart, Mail, Search, Shield, Star, TrendingUp, Users, Zap } from 'lucide-react'
 
 const section: React.CSSProperties = {
   maxWidth: '960px',
@@ -129,9 +132,9 @@ export default function Home() {
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/showcase" style={{ textDecoration: 'none' }}>
-              <Button variant="primary" size="lg">
+              <IconButton icon={Zap} variant="primary" size="lg">
                 Open Showcase
-              </Button>
+              </IconButton>
             </a>
             <a href="#get-started" style={{ textDecoration: 'none' }}>
               <Button variant="outline" size="lg">
@@ -285,30 +288,43 @@ export default function ShowcasePage() {
               gap: '24px',
             }}
           >
+            {/* IconButton showcase */}
+            <Card title="IconButton" description="Buttons with Lucide icons — icon props detected automatically" padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <IconButton icon={Star} variant="primary">Favorite</IconButton>
+                  <IconButton icon={Download} variant="secondary">Download</IconButton>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <IconButton icon={Mail} variant="outline">Contact</IconButton>
+                  <IconButton icon={Search} variant="default" size="sm">Search</IconButton>
+                </div>
+                <div style={{ marginTop: '4px' }}>
+                  <Badge variant="info" pill>LucideIcon props</Badge>
+                </div>
+              </div>
+            </Card>
+
+            {/* StatCard showcase */}
+            <Card title="StatCard" description="Metric cards with icon, value, and trend indicator" padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <StatCard label="Active Users" value="2,847" icon={Users} trend="up" trendText="+12.5%" />
+                <StatCard label="Revenue" value="$48.2k" icon={TrendingUp} trend="up" trendText="+8.1%" />
+              </div>
+            </Card>
+
             {/* Button showcase */}
             <Card title="Button" description="6 variants, 3 sizes, full-width support" padding="md">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Button variant="primary" size="sm">
-                    Primary
-                  </Button>
-                  <Button variant="secondary" size="sm">
-                    Secondary
-                  </Button>
-                  <Button variant="destructive" size="sm">
-                    Destructive
-                  </Button>
+                  <Button variant="primary" size="sm">Primary</Button>
+                  <Button variant="secondary" size="sm">Secondary</Button>
+                  <Button variant="destructive" size="sm">Destructive</Button>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Button variant="outline" size="sm">
-                    Outline
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    Ghost
-                  </Button>
-                  <Button variant="default" size="sm" disabled>
-                    Disabled
-                  </Button>
+                  <Button variant="outline" size="sm">Outline</Button>
+                  <Button variant="ghost" size="sm">Ghost</Button>
+                  <Button variant="default" size="sm" disabled>Disabled</Button>
                 </div>
               </div>
             </Card>
@@ -333,15 +349,9 @@ export default function ShowcasePage() {
                   <Badge variant="info">Info</Badge>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <Badge variant="success" pill>
-                    Active
-                  </Badge>
-                  <Badge variant="error" pill>
-                    Archived
-                  </Badge>
-                  <Badge variant="info" pill>
-                    v0.1.0
-                  </Badge>
+                  <Badge variant="success" pill>Active</Badge>
+                  <Badge variant="error" pill>Archived</Badge>
+                  <Badge variant="info" pill>v0.1.0</Badge>
                 </div>
               </div>
             </Card>
@@ -373,9 +383,7 @@ export default function ShowcasePage() {
                   you can inspect in the showcase.
                 </p>
                 <div>
-                  <Badge variant="info" pill>
-                    Meta
-                  </Badge>
+                  <Badge variant="info" pill>Meta</Badge>
                 </div>
               </div>
             </Card>
@@ -452,6 +460,87 @@ export default function ShowcasePage() {
         </div>
       </section>
 
+      {/* ─── Fixture Plugins ─── */}
+      <section style={{ padding: '96px 0', background: '#fff' }}>
+        <div style={section}>
+          <SectionTitle sub="Component-type props like LucideIcon get a visual picker instead of a text input. Provide your own icons, badges, or any React element.">
+            Fixture Plugins
+          </SectionTitle>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px' }}>
+            {/* The problem */}
+            <Card title="The problem" description="Component props need real elements, not strings" padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <Alert severity="warning" title="Without fixtures">
+                  Props typed as <span style={inlineCode}>LucideIcon</span> or <span style={inlineCode}>ReactNode</span> only get a plain text input — no way to preview with real icons.
+                </Alert>
+                <p style={{ margin: 0, fontSize: '13px', color: '#6b7280', lineHeight: 1.6 }}>
+                  The <span style={inlineCode}>{'<IconButton />'}</span> and <span style={inlineCode}>{'<StatCard />'}</span> on this page
+                  both take <span style={inlineCode}>icon: LucideIcon</span> props. jc detects this type automatically.
+                </p>
+              </div>
+            </Card>
+
+            {/* The solution */}
+            <Card title="The solution" description="Define fixtures, get a visual icon picker" padding="md">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[Star, Heart, Zap, Search, Mail, Shield, Users, TrendingUp, Download].map((Icon, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#6b7280',
+                      }}
+                    >
+                      <Icon size={16} />
+                    </div>
+                  ))}
+                </div>
+                <Alert severity="success" title="With fixtures">
+                  Icon props show a grid of clickable icons. The code preview outputs{' '}
+                  <span style={inlineCode}>{'<Star />'}</span> instead of raw keys.
+                </Alert>
+              </div>
+            </Card>
+          </div>
+
+          <div style={{ marginTop: '32px', maxWidth: '640px', marginInline: 'auto' }}>
+            <CodeBlock>{`// fixtures.ts
+import { defineFixtures } from 'jc'
+import { Star, Heart, Zap } from 'lucide-react'
+import { createElement } from 'react'
+
+export const lucideFixtures = defineFixtures({
+  name: 'lucide',
+  fixtures: [
+    {
+      key: 'star',
+      label: 'Star',
+      category: 'icons',
+      render: () => createElement(Star, { size: 20 }),
+      renderIcon: () => createElement(Star, { size: 14 }),
+    },
+    // ... more icons
+  ],
+})
+
+// showcase/page.tsx
+<ShowcaseApp
+  meta={meta}
+  registry={registry}
+  fixtures={[lucideFixtures]}  // ← plug in here
+/>`}</CodeBlock>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Meta CTA ─── */}
       <section style={{ padding: '96px 0', background: '#fff' }}>
         <div style={section}>
@@ -489,11 +578,11 @@ export default function ShowcasePage() {
                 lineHeight: 1.6,
               }}
             >
-              Every <span style={inlineCode}>{'<Button />'}</span>,{' '}
-              <span style={inlineCode}>{'<Card />'}</span>,{' '}
-              <span style={inlineCode}>{'<Alert />'}</span>, and{' '}
-              <span style={inlineCode}>{'<Badge />'}</span> on this page was auto-discovered by jc. Open
-              the showcase to inspect their props, tweak values, and copy JSX snippets.
+              Every <span style={inlineCode}>{'<IconButton />'}</span>,{' '}
+              <span style={inlineCode}>{'<StatCard />'}</span>,{' '}
+              <span style={inlineCode}>{'<Card />'}</span>, and{' '}
+              <span style={inlineCode}>{'<Alert />'}</span> on this page was auto-discovered by jc.
+              Open the showcase to pick Lucide icons from the fixture plugin, tweak props, and copy JSX snippets.
             </p>
             <a href="/showcase" style={{ textDecoration: 'none' }}>
               <Button variant="primary" size="lg">

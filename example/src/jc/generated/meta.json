@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-20T22:05:01.863Z",
+  "generatedAt": "2026-02-20T22:43:19.888Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
@@ -233,6 +233,70 @@
       "acceptsChildren": true
     },
     {
+      "displayName": "IconButton",
+      "filePath": "src/components/ui/icon-button.tsx",
+      "description": "",
+      "props": {
+        "icon": {
+          "name": "icon",
+          "type": "LucideIcon",
+          "rawType": "LucideIcon",
+          "required": true,
+          "description": "Leading icon displayed before the label",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "trailingIcon": {
+          "name": "trailingIcon",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional trailing icon displayed after the label",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "variant": {
+          "name": "variant",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "default",
+            "primary",
+            "secondary",
+            "outline"
+          ],
+          "required": false,
+          "defaultValue": "default",
+          "description": "Visual style variant",
+          "isChildren": false
+        },
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Button size",
+          "isChildren": false
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the button is disabled",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
       "displayName": "Input",
       "filePath": "src/components/ui/input.tsx",
       "description": "",
@@ -300,6 +364,61 @@
           "required": false,
           "defaultValue": "false",
           "description": "Whether the field is required",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "StatCard",
+      "filePath": "src/components/ui/stat-card.tsx",
+      "description": "",
+      "props": {
+        "label": {
+          "name": "label",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "The metric label",
+          "isChildren": false
+        },
+        "value": {
+          "name": "value",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "The metric value",
+          "isChildren": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "LucideIcon",
+          "rawType": "LucideIcon",
+          "required": true,
+          "description": "Icon displayed in the card",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "trend": {
+          "name": "trend",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "up",
+            "down",
+            "neutral"
+          ],
+          "required": false,
+          "defaultValue": "neutral",
+          "description": "Trend direction indicator",
+          "isChildren": false
+        },
+        "trendText": {
+          "name": "trendText",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Trend percentage text (e.g. \"+12%\")",
           "isChildren": false
         }
       },
