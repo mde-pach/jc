@@ -1,0 +1,56 @@
+{
+  "name": "just-components",
+  "version": "0.1.0",
+  "description": "Auto-discovery component showcase with TypeScript props introspection and faker integration",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.js",
+      "types": "./dist/config.d.ts"
+    }
+  },
+  "bin": {
+    "jc": "./dist/cli.cjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "react-docgen-typescript": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "components",
+    "showcase",
+    "storybook-alternative",
+    "typescript",
+    "props-introspection",
+    "react"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mde-pach/jc.git"
+  }
+}
