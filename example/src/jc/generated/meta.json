@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-20T22:43:19.888Z",
+  "generatedAt": "2026-02-20T23:02:48.788Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
@@ -233,6 +233,55 @@
       "acceptsChildren": true
     },
     {
+      "displayName": "CodeBlock",
+      "filePath": "src/components/ui/code-block.tsx",
+      "description": "",
+      "props": {
+        "code": {
+          "name": "code",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "The code content to display",
+          "isChildren": false
+        },
+        "inline": {
+          "name": "inline",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether to show a compact inline-style block",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "FeatureStep",
+      "filePath": "src/components/ui/feature-step.tsx",
+      "description": "",
+      "props": {
+        "step": {
+          "name": "step",
+          "type": "number",
+          "rawType": "number",
+          "required": true,
+          "description": "Step number displayed in the circle",
+          "isChildren": false
+        },
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Step title",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
       "displayName": "IconButton",
       "filePath": "src/components/ui/icon-button.tsx",
       "description": "",
@@ -370,6 +419,109 @@
       "acceptsChildren": false
     },
     {
+      "displayName": "PricingCard",
+      "filePath": "src/components/ui/pricing-card.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Tier name displayed as the card title",
+          "isChildren": false
+        },
+        "description": {
+          "name": "description",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Short description of the tier",
+          "isChildren": false
+        },
+        "price": {
+          "name": "price",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Price display text (e.g. \"$0\", \"$29/mo\")",
+          "isChildren": false
+        },
+        "priceLabel": {
+          "name": "priceLabel",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional label next to the price (e.g. \"still free\", \"/month\")",
+          "isChildren": false
+        },
+        "features": {
+          "name": "features",
+          "type": "string[]",
+          "rawType": "string[]",
+          "required": true,
+          "description": "List of included features, one per line",
+          "isChildren": false
+        },
+        "highlighted": {
+          "name": "highlighted",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether this tier is visually highlighted",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "SectionHeader",
+      "filePath": "src/components/ui/section-header.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Section title",
+          "isChildren": false
+        },
+        "subtitle": {
+          "name": "subtitle",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional subtitle text displayed below the title",
+          "isChildren": false
+        },
+        "badge": {
+          "name": "badge",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional badge content displayed above the title",
+          "isChildren": false,
+          "componentKind": "node"
+        },
+        "align": {
+          "name": "align",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "left",
+            "center"
+          ],
+          "required": false,
+          "defaultValue": "center",
+          "description": "Text alignment",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
       "displayName": "StatCard",
       "filePath": "src/components/ui/stat-card.tsx",
       "description": "",
@@ -419,6 +571,38 @@
           "rawType": "enum",
           "required": false,
           "description": "Trend percentage text (e.g. \"+12%\")",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "TestimonialCard",
+      "filePath": "src/components/ui/testimonial-card.tsx",
+      "description": "",
+      "props": {
+        "quote": {
+          "name": "quote",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "The testimonial quote text",
+          "isChildren": false
+        },
+        "name": {
+          "name": "name",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Author's full name",
+          "isChildren": false
+        },
+        "role": {
+          "name": "role",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Author's role or title",
           "isChildren": false
         }
       },

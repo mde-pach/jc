@@ -9,7 +9,12 @@ export const registry: Record<string, () => Promise<ComponentType<any>>> = {
   'Badge': () => import('@/components/ui/badge').then(m => (m as any).Badge),
   'Button': () => import('@/components/ui/button').then(m => (m as any).Button),
   'Card': () => import('@/components/ui/card').then(m => (m as any).Card),
+  'CodeBlock': () => import('@/components/ui/code-block').then(m => (m as any).CodeBlock),
+  'FeatureStep': () => import('@/components/ui/feature-step').then(m => (m as any).FeatureStep),
   'IconButton': () => import('@/components/ui/icon-button').then(m => (m as any).IconButton),
   'Input': () => import('@/components/ui/input').then(m => (m as any).Input),
+  'PricingCard': () => import('@/components/ui/pricing-card').then(m => (m as any).PricingCard),
+  'SectionHeader': () => import('@/components/ui/section-header').then(m => (m as any).SectionHeader),
   'StatCard': () => import('@/components/ui/stat-card').then(m => (m as any).StatCard),
+  'TestimonialCard': () => import('@/components/ui/testimonial-card').then(m => (m as any).TestimonialCard),
 }

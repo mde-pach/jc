@@ -15,6 +15,7 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
   if (prop.type === 'number') return 'number'
   if (/ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type)) return 'component'
   if (prop.type.includes('=>') || prop.type.includes('Function')) return 'readonly'
+  if (prop.type.endsWith('[]')) return 'json'
   if (prop.type.startsWith('{') || prop.type.startsWith('Array') || prop.type.startsWith('Record'))
     return 'json'
   if (prop.type === 'string' || prop.type === 'enum') return 'text'
@@ -50,6 +51,17 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
     if (name.includes('rating') || name.includes('score'))
       return faker.number.float({ min: 1, max: 5, fractionDigits: 1 })
     return faker.number.int({ min: 0, max: 100 })
+  }
+
+  // String arrays — generate a small list of fake items
+  if (prop.type === 'string[]') {
+    if (name.includes('feature') || name.includes('benefit')) {
+      return [faker.lorem.words(3), faker.lorem.words(3), faker.lorem.words(3)]
+    }
+    if (name.includes('tag') || name.includes('label') || name.includes('categor')) {
+      return [faker.lorem.word(), faker.lorem.word(), faker.lorem.word()]
+    }
+    return [faker.lorem.words(2), faker.lorem.words(2), faker.lorem.words(2)]
   }
 
   // Object/array types by name heuristic
