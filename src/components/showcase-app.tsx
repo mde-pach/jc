@@ -2,10 +2,32 @@
 
 import type { ComponentType } from 'react'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
+import { useThemeDetection } from '../lib/use-theme.js'
 import type { JcMeta } from '../types.js'
 import { ShowcaseControls } from './showcase-controls.js'
 import { ShowcasePreview } from './showcase-preview.js'
 import { ShowcaseSidebar } from './showcase-sidebar.js'
+
+const THEME = {
+  light: {
+    '--jc-bg': '#ffffff',
+    '--jc-fg': '#1f2937',
+    '--jc-muted': '#f9fafb',
+    '--jc-border': '#e5e7eb',
+    '--jc-accent': '#3b82f6',
+    '--jc-accent-fg': '#ffffff',
+    '--jc-checker': '#f3f4f6',
+  },
+  dark: {
+    '--jc-bg': '#111827',
+    '--jc-fg': '#f3f4f6',
+    '--jc-muted': '#1f2937',
+    '--jc-border': '#374151',
+    '--jc-accent': '#60a5fa',
+    '--jc-accent-fg': '#111827',
+    '--jc-checker': '#1f2937',
+  },
+} as const
 
 interface ShowcaseAppProps {
   meta: JcMeta
@@ -14,19 +36,22 @@ interface ShowcaseAppProps {
 
 export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
   const state = useShowcaseState(meta)
+  const theme = useThemeDetection()
+  const vars = THEME[theme]
 
   return (
     <div
       style={{
+        ...vars,
         height: '100vh',
         width: '100vw',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: 'var(--jc-fg, #1f2937)',
-        backgroundColor: 'var(--jc-bg, #fff)',
-      }}
+        color: 'var(--jc-fg)',
+        backgroundColor: 'var(--jc-bg)',
+      } as React.CSSProperties}
     >
       {/* Top bar */}
       <header
@@ -36,7 +61,7 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 16px',
-          borderBottom: '1px solid var(--jc-border, #e5e7eb)',
+          borderBottom: '1px solid var(--jc-border)',
           flexShrink: 0,
         }}
       >
@@ -46,11 +71,9 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
             just-components
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '10px', opacity: 0.3 }}>
-            {meta.components.length} components
-          </span>
-        </div>
+        <span style={{ fontSize: '10px', opacity: 0.3 }}>
+          {meta.components.length} components
+        </span>
       </header>
 
       {/* Main area */}
@@ -59,9 +82,9 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
         <aside
           style={{
             width: '224px',
-            borderRight: '1px solid var(--jc-border, #e5e7eb)',
+            borderRight: '1px solid var(--jc-border)',
             flexShrink: 0,
-            backgroundColor: 'var(--jc-muted, #f9fafb)',
+            backgroundColor: 'var(--jc-muted)',
           }}
         >
           <ShowcaseSidebar
@@ -105,9 +128,9 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
             <aside
               style={{
                 width: '256px',
-                borderLeft: '1px solid var(--jc-border, #e5e7eb)',
+                borderLeft: '1px solid var(--jc-border)',
                 flexShrink: 0,
-                backgroundColor: 'var(--jc-muted, #f9fafb)',
+                backgroundColor: 'var(--jc-muted)',
               }}
             >
               <ShowcaseControls

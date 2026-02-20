@@ -31,7 +31,7 @@ export function ShowcaseControls({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 16px',
-          borderBottom: '1px solid var(--jc-border, #e5e7eb)',
+          borderBottom: '1px solid var(--jc-border)',
         }}
       >
         <h3

@@ -53,7 +53,7 @@ export function ShowcasePreview({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 16px',
-          borderBottom: '1px solid var(--jc-border, #e5e7eb)',
+          borderBottom: '1px solid var(--jc-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -81,11 +81,11 @@ export function ShowcasePreview({
       >
         <div
           style={{
-            backgroundColor: 'var(--jc-bg, #fff)',
+            backgroundColor: 'var(--jc-bg)',
             borderRadius: '8px',
             padding: '32px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid var(--jc-border, #e5e7eb)',
+            border: '1px solid var(--jc-border)',
             minWidth: '200px',
             display: 'flex',
             alignItems: 'center',
@@ -111,9 +111,9 @@ export function ShowcasePreview({
       {/* Code preview */}
       <div
         style={{
-          borderTop: '1px solid var(--jc-border, #e5e7eb)',
+          borderTop: '1px solid var(--jc-border)',
           padding: '12px 16px',
-          backgroundColor: 'var(--jc-muted, #f9fafb)',
+          backgroundColor: 'var(--jc-muted)',
         }}
       >
         <pre

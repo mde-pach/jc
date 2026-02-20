@@ -4,12 +4,12 @@
 
 import {
   existsSync,
-  globSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   writeFileSync,
 } from 'node:fs'
+import * as fs from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { withCompilerOptions } from 'react-docgen-typescript'
 import ts from 'typescript'
@@ -20,10 +20,11 @@ import type { JcComponentMeta, JcConfig, JcMeta, JcPropMeta } from '../types.js'
  * older versions get a simple recursive walk fallback.
  */
 function findFiles(pattern: string, cwd: string): string[] {
-  // Node 22+ globSync
-  if (typeof globSync === 'function') {
+  // Node 22+ globSync (accessed dynamically to avoid import errors on Bun/older Node)
+  const maybeGlobSync = (fs as any).globSync
+  if (typeof maybeGlobSync === 'function') {
     try {
-      return globSync(pattern, { cwd }) as string[]
+      return maybeGlobSync(pattern, { cwd }) as string[]
     } catch {
       // fallback below
     }
@@ -113,6 +114,41 @@ function extractValues(rawType: string): string[] | undefined {
   return undefined
 }
 
+/**
+ * Tokens that are TypeScript type names, NOT real enum values.
+ * These leak through react-docgen-typescript when a prop is a
+ * union of TS types (e.g., ReactNode = string | number | ReactElement | ...).
+ */
+const TYPE_NAME_TOKENS = new Set([
+  'string', 'number', 'bigint', 'boolean', 'symbol', 'object',
+  'true', 'false', 'void', 'never', 'any', 'unknown',
+])
+const TYPE_NAME_PATTERN = /^(?:React|JSX|Element|Iterable|Promise|Awaited|Record|Array|Function|Set|Map|Document|Node|Boundary|Fragment)\b/
+
+/** Returns true if value looks like a TS type name rather than a real enum value */
+function isTypeName(value: string): boolean {
+  if (TYPE_NAME_TOKENS.has(value)) return true
+  if (TYPE_NAME_PATTERN.test(value)) return true
+  // Contains generics like Foo<Bar>
+  if (value.includes('<') && value.includes('>')) return true
+  // Contains => (function signature)
+  if (value.includes('=>')) return true
+  // Contains [] (array type) or {} (object literal type)
+  if (value.includes('[]') || value.includes('{ ')) return true
+  // PascalCase single word that looks like a type (e.g. ReactPortal, LucideIcon, DocumentFragment)
+  if (/^[A-Z][a-zA-Z]+$/.test(value) && value.length > 6) return true
+  return false
+}
+
+/** Filter values to only keep real enum/literal values */
+function cleanValues(values: string[] | undefined): string[] | undefined {
+  if (!values) return undefined
+  const clean = values.filter(
+    (v) => v && v !== 'undefined' && v !== 'null' && !isTypeName(v),
+  )
+  return clean.length > 0 ? clean : undefined
+}
+
 // ── File discovery ────────────────────────────────────────────
 
 function discoverFiles(projectRoot: string, config: JcConfig): string[] {
@@ -167,14 +203,13 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
               v.value?.replace(/"/g, ''),
             ) ??
             undefined
-          const values = rawValues?.filter(
-            (v: string) => v && v !== 'undefined' && v !== 'null',
-          )
+          const values = cleanValues(rawValues)
           const isBooleanEnum =
             rawType === 'enum' &&
-            values &&
-            values.length <= 2 &&
-            values.every((v: string) => v === 'true' || v === 'false')
+            rawValues &&
+            rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null').length <= 2 &&
+            rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null')
+              .every((v: string) => v === 'true' || v === 'false')
 
           props[propName] = {
             name: propName,
