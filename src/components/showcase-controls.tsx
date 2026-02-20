@@ -93,6 +93,7 @@ export function ShowcaseControls({
                   controlType={controlType}
                   value={propValues[prop.name]}
                   options={prop.values}
+                  componentKind={prop.componentKind}
                   onChange={(v) => onPropChange(prop.name, v)}
                 />
               )

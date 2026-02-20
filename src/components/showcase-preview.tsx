@@ -1,6 +1,8 @@
 'use client'
 
 import { Component, type ComponentType, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { resolveControlType } from '../lib/faker-map.js'
+import { isIconKey, placeholderToCodeString, resolvePlaceholder } from '../lib/placeholder-components.js'
 import type { JcComponentMeta } from '../types.js'
 
 interface ShowcasePreviewProps {
@@ -37,12 +39,24 @@ export function ShowcasePreview({
   const cleanProps = useMemo(() => {
     const result: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(propValues)) {
-      if (value !== undefined && value !== '' && value !== null) {
-        result[key] = value
+      if (value === undefined || value === '' || value === null) continue
+
+      const propMeta = component.props[key]
+      const controlType = propMeta ? resolveControlType(propMeta) : null
+
+      // Resolve component placeholder keys to actual React components/elements
+      if (controlType === 'component' && typeof value === 'string') {
+        const resolved = resolvePlaceholder(value, propMeta?.componentKind)
+        if (resolved !== undefined) {
+          result[key] = resolved
+        }
+        continue
       }
+
+      result[key] = value
     }
     return result
-  }, [propValues])
+  }, [propValues, component.props])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -66,7 +80,7 @@ export function ShowcasePreview({
         </div>
       </div>
 
-      {/* Preview area — uses host app's Tailwind for the checkerboard bg */}
+      {/* Preview area */}
       <div
         style={{
           flex: 1,
@@ -75,7 +89,7 @@ export function ShowcasePreview({
           justifyContent: 'center',
           padding: '32px',
           backgroundImage:
-            'repeating-conic-gradient(#f3f4f6 0% 25%, transparent 0% 50%)',
+            'repeating-conic-gradient(var(--jc-checker) 0% 25%, transparent 0% 50%)',
           backgroundSize: '16px 16px',
         }}
       >
@@ -125,7 +139,7 @@ export function ShowcasePreview({
             margin: 0,
           }}
         >
-          <code>{generateCodePreview(component, cleanProps, childrenText)}</code>
+          <code>{generateCodePreview(component, propValues, childrenText)}</code>
         </pre>
       </div>
     </div>
@@ -142,6 +156,22 @@ function generateCodePreview(
 
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined || value === null || value === '') continue
+
+    const propMeta = component.props[key]
+    const controlType = propMeta ? resolveControlType(propMeta) : null
+
+    // Component props: show a readable representation
+    if (controlType === 'component' && typeof value === 'string') {
+      if (value === 'none') continue
+      const codeStr = placeholderToCodeString(value, key)
+      if (isIconKey(value)) {
+        propStrings.push(`${key}={${codeStr}}`)
+      } else {
+        propStrings.push(`${key}={${codeStr}}`)
+      }
+      continue
+    }
+
     if (typeof value === 'boolean') {
       if (value) propStrings.push(key)
     } else if (typeof value === 'string') {

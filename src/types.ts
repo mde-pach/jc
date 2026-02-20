@@ -8,6 +8,8 @@ export interface JcPropMeta {
   defaultValue?: string
   description: string
   isChildren: boolean
+  /** Set when the prop accepts a React component/element/node */
+  componentKind?: JcComponentPropKind
 }
 
 /** Metadata for a single exported component */
@@ -35,6 +37,10 @@ export type JcControlType =
   | 'multiline'
   | 'json'
   | 'readonly'
+  | 'component'
+
+/** Categories for component-type props */
+export type JcComponentPropKind = 'icon' | 'element' | 'node'
 
 /** Resolved control definition for a prop */
 export interface JcControl {

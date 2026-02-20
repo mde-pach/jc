@@ -7,10 +7,13 @@ import type { JcControlType, JcPropMeta } from '../types.js'
 
 /** Determine the control type for a prop */
 export function resolveControlType(prop: JcPropMeta): JcControlType {
+  // Component-type props get a dedicated control
+  if (prop.componentKind) return 'component'
+
   if (prop.values && prop.values.length > 0) return 'select'
   if (prop.type === 'boolean') return 'boolean'
   if (prop.type === 'number') return 'number'
-  if (/ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type)) return 'multiline'
+  if (/ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type)) return 'component'
   if (prop.type.includes('=>') || prop.type.includes('Function')) return 'readonly'
   if (prop.type.startsWith('{') || prop.type.startsWith('Array') || prop.type.startsWith('Record'))
     return 'json'
@@ -18,9 +21,72 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
   return 'text'
 }
 
+/**
+ * Available placeholder components for component-type props.
+ * Each entry has a label and a key used to resolve the actual React element at render time.
+ */
+export const COMPONENT_PLACEHOLDERS = {
+  icon: [
+    { key: 'icon:star', label: 'Star' },
+    { key: 'icon:heart', label: 'Heart' },
+    { key: 'icon:zap', label: 'Zap' },
+    { key: 'icon:bell', label: 'Bell' },
+    { key: 'icon:check', label: 'Check' },
+    { key: 'icon:x', label: 'X' },
+    { key: 'icon:search', label: 'Search' },
+    { key: 'icon:settings', label: 'Settings' },
+    { key: 'icon:user', label: 'User' },
+    { key: 'icon:home', label: 'Home' },
+    { key: 'icon:plus', label: 'Plus' },
+    { key: 'icon:arrow-right', label: 'Arrow Right' },
+    { key: 'icon:calendar', label: 'Calendar' },
+    { key: 'icon:mail', label: 'Mail' },
+    { key: 'icon:tag', label: 'Tag' },
+  ],
+  element: [
+    { key: 'none', label: 'None' },
+    { key: 'icon:star', label: 'Star icon' },
+    { key: 'icon:zap', label: 'Zap icon' },
+    { key: 'text:badge', label: 'Badge text' },
+    { key: 'text:label', label: 'Label text' },
+    { key: 'text:paragraph', label: 'Paragraph' },
+  ],
+  node: [
+    { key: 'none', label: 'None' },
+    { key: 'icon:star', label: 'Star icon' },
+    { key: 'icon:zap', label: 'Zap icon' },
+    { key: 'text:badge', label: 'Badge text' },
+    { key: 'text:label', label: 'Label text' },
+    { key: 'text:paragraph', label: 'Paragraph' },
+  ],
+} as const
+
+/** Get the default placeholder key for a component prop */
+export function getDefaultComponentKey(propName: string, prop: JcPropMeta): string {
+  const kind = prop.componentKind ?? 'node'
+  const name = propName.toLowerCase()
+
+  if (kind === 'icon' || name === 'icon' || name.endsWith('icon')) {
+    return 'icon:star'
+  }
+
+  // For other node/element props, default based on name
+  if (name === 'badge') return 'text:badge'
+  if (name === 'action' || name === 'actions') return 'text:label'
+  if (name === 'separator') return 'none'
+  if (name === 'breadcrumbs') return 'text:label'
+
+  return 'none'
+}
+
 /** Generate a smart default value for a prop based on name + type heuristics */
 export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
   const name = propName.toLowerCase()
+
+  // Component-type props get a placeholder key string
+  if (prop.componentKind || resolveControlType(prop) === 'component') {
+    return getDefaultComponentKey(propName, prop)
+  }
 
   if (prop.defaultValue !== undefined) {
     if (prop.type === 'boolean') return prop.defaultValue === 'true'
@@ -42,6 +108,14 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
     if (name.includes('rating') || name.includes('score'))
       return faker.number.float({ min: 1, max: 5, fractionDigits: 1 })
     return faker.number.int({ min: 0, max: 100 })
+  }
+
+  // Object/array types by name heuristic
+  if (name === 'stats' || name === 'items' || name === 'data') {
+    return undefined // skip — complex array props can't be auto-faked safely
+  }
+  if (name === 'trend') {
+    return undefined // skip — { value: number; label: string } not safe to auto-fake
   }
 
   if (prop.type === 'string' || prop.type === 'enum') {

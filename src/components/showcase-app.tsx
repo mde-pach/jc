@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
-import { useThemeDetection } from '../lib/use-theme.js'
+import { useTheme, type JcThemeMode } from '../lib/use-theme.js'
 import type { JcMeta } from '../types.js'
 import { ShowcaseControls } from './showcase-controls.js'
 import { ShowcasePreview } from './showcase-preview.js'
@@ -36,7 +36,7 @@ interface ShowcaseAppProps {
 
 export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
   const state = useShowcaseState(meta)
-  const theme = useThemeDetection()
+  const { theme, mode, cycle } = useTheme()
   const vars = THEME[theme]
 
   return (
@@ -71,9 +71,12 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
             just-components
           </span>
         </div>
-        <span style={{ fontSize: '10px', opacity: 0.3 }}>
-          {meta.components.length} components
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ThemeToggle mode={mode} theme={theme} onCycle={cycle} />
+          <span style={{ fontSize: '10px', opacity: 0.3 }}>
+            {meta.components.length} components
+          </span>
+        </div>
       </header>
 
       {/* Main area */}
@@ -146,5 +149,76 @@ export function ShowcaseApp({ meta, registry }: ShowcaseAppProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Theme toggle ──────────────────────────────────────────────
+
+function ThemeToggle({
+  mode,
+  theme,
+  onCycle,
+}: {
+  mode: JcThemeMode
+  theme: 'light' | 'dark'
+  onCycle: () => void
+}) {
+  const title =
+    mode === 'auto' ? `Auto (${theme})` :
+    mode === 'light' ? 'Light' : 'Dark'
+
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      title={title}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '24px',
+        height: '24px',
+        borderRadius: '4px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: 'inherit',
+        cursor: 'pointer',
+        opacity: mode === 'auto' ? 0.25 : 0.5,
+        transition: 'opacity 0.15s',
+      }}
+    >
+      {mode === 'auto' ? (
+        // Auto: half sun / half moon
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      ) : theme === 'light' ? (
+        // Sun
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      ) : (
+        // Moon
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )}
+    </button>
   )
 }

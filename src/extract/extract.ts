@@ -13,7 +13,7 @@ import * as fs from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { withCompilerOptions } from 'react-docgen-typescript'
 import ts from 'typescript'
-import type { JcComponentMeta, JcConfig, JcMeta, JcPropMeta } from '../types.js'
+import type { JcComponentMeta, JcComponentPropKind, JcConfig, JcMeta, JcPropMeta } from '../types.js'
 
 /**
  * Cross-version glob: Node 22+ has globSync in node:fs,
@@ -149,6 +149,71 @@ function cleanValues(values: string[] | undefined): string[] | undefined {
   return clean.length > 0 ? clean : undefined
 }
 
+// ── Component prop detection ─────────────────────────────────
+
+const ICON_TYPE_PATTERNS = [/LucideIcon/, /IconType/, /Icon$/, /ComponentType/]
+const ELEMENT_TYPE_PATTERNS = [/ReactElement/, /JSX\.Element/]
+const NODE_TYPE_PATTERNS = [/ReactNode/]
+
+/**
+ * Also read the source to check the actual TS type annotation for icon props.
+ * react-docgen-typescript often flattens LucideIcon | ReactNode → 'enum'.
+ */
+function detectComponentKind(
+  propName: string,
+  rawType: string,
+  source?: string,
+): JcComponentPropKind | undefined {
+  const name = propName.toLowerCase()
+
+  // Type-based detection (explicit type names)
+  for (const pattern of ICON_TYPE_PATTERNS) {
+    if (pattern.test(rawType)) return 'icon'
+  }
+  for (const pattern of ELEMENT_TYPE_PATTERNS) {
+    if (pattern.test(rawType)) return 'element'
+  }
+  for (const pattern of NODE_TYPE_PATTERNS) {
+    if (pattern.test(rawType)) return 'node'
+  }
+
+  // Name-based heuristic: icon props
+  if (name === 'icon' || name.endsWith('icon')) {
+    // Check source to distinguish LucideIcon (constructor) from ReactNode (element)
+    if (source) {
+      // Look for `icon?: LucideIcon` or `icon: ComponentType` patterns
+      const constructorPattern = new RegExp(`${propName}\\??\\s*:\\s*(?:LucideIcon|ComponentType|FC|Icon)\\b`)
+      if (constructorPattern.test(source)) return 'icon'
+      // Look for `icon?: React.ReactNode` or `icon?: ReactNode`
+      const nodePattern = new RegExp(`${propName}\\??\\s*:\\s*(?:React\\.)?ReactNode`)
+      if (nodePattern.test(source)) return 'element'
+    }
+    return 'icon' // default to constructor for icon-named props
+  }
+
+  // Name-based heuristic for common ReactNode props
+  const CONFIDENT_NODE_NAMES = new Set([
+    'badge', 'action', 'actions', 'prefix', 'suffix',
+    'breadcrumbs', 'separator',
+  ])
+  if (CONFIDENT_NODE_NAMES.has(name)) {
+    if (rawType === 'enum' || /Node|Element|JSX|ReactNode/.test(rawType)) {
+      return 'node'
+    }
+  }
+  // Less confident names — only match if type explicitly mentions Node/Element
+  const LESS_CONFIDENT_NODE_NAMES = new Set([
+    'header', 'footer', 'trigger', 'label',
+  ])
+  if (LESS_CONFIDENT_NODE_NAMES.has(name)) {
+    if (/Node|Element|JSX|ReactNode/.test(rawType)) {
+      return 'node'
+    }
+  }
+
+  return undefined
+}
+
 // ── File discovery ────────────────────────────────────────────
 
 function discoverFiles(projectRoot: string, config: JcConfig): string[] {
@@ -211,6 +276,8 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
             rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null')
               .every((v: string) => v === 'true' || v === 'false')
 
+          const componentKind = detectComponentKind(propName, rawType, source)
+
           props[propName] = {
             name: propName,
             type: isBooleanEnum ? 'boolean' : simplifyType(rawType),
@@ -224,6 +291,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
             defaultValue: propInfo.defaultValue?.value,
             description: propInfo.description ?? '',
             isChildren: false,
+            componentKind,
           }
         }
 
