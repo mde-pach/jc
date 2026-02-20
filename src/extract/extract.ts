@@ -15,6 +15,16 @@ import { withCompilerOptions } from 'react-docgen-typescript'
 import ts from 'typescript'
 import type { JcComponentMeta, JcComponentPropKind, JcConfig, JcMeta, JcPropMeta } from '../types.js'
 
+/** Apply path alias mapping: replace source prefixes with alias prefixes */
+export function applyPathAlias(filePath: string, pathAlias: Record<string, string>): string {
+  for (const [alias, sourcePrefix] of Object.entries(pathAlias)) {
+    if (filePath.startsWith(sourcePrefix)) {
+      return alias + filePath.slice(sourcePrefix.length)
+    }
+  }
+  return filePath
+}
+
 /**
  * Cross-version glob: Node 22+ has globSync in node:fs,
  * older versions get a simple recursive walk fallback.
@@ -95,7 +105,7 @@ function createPropFilter(config: JcConfig) {
   }
 }
 
-function simplifyType(rawType: string): string {
+export function simplifyType(rawType: string): string {
   let t = rawType
     .replace(/\s*\|\s*null/g, '')
     .replace(/\s*\|\s*undefined/g, '')
@@ -106,7 +116,7 @@ function simplifyType(rawType: string): string {
   return t
 }
 
-function extractValues(rawType: string): string[] | undefined {
+export function extractValues(rawType: string): string[] | undefined {
   const matches = rawType.match(/"([^"]+)"/g)
   if (matches && matches.length >= 2) {
     return matches.map((m) => m.replace(/"/g, ''))
@@ -120,28 +130,41 @@ function extractValues(rawType: string): string[] | undefined {
  * union of TS types (e.g., ReactNode = string | number | ReactElement | ...).
  */
 const TYPE_NAME_TOKENS = new Set([
+  // JS primitives
   'string', 'number', 'bigint', 'boolean', 'symbol', 'object',
   'true', 'false', 'void', 'never', 'any', 'unknown',
+  // React types that leak through docgen
+  'ReactNode', 'ReactElement', 'ReactPortal', 'ReactFragment',
+  'ReactChild', 'ReactText', 'ReactInstance',
+  'JSXElement', 'JSXFragment',
+  'Element', 'DocumentFragment', 'Node',
+  'ComponentType', 'ComponentClass', 'FunctionComponent',
+  'ForwardRefExoticComponent', 'LazyExoticComponent', 'MemoExoticComponent',
+  'LucideIcon', 'IconType',
+  // Common TS utility types
+  'Partial', 'Required', 'Readonly', 'Record', 'Pick', 'Omit',
+  'Exclude', 'Extract', 'NonNullable', 'ReturnType', 'InstanceType',
+  'Promise', 'Awaited', 'Iterable', 'Iterator', 'AsyncIterable',
+  'Array', 'Set', 'Map', 'WeakSet', 'WeakMap',
+  'Function', 'Date', 'RegExp', 'Error',
 ])
-const TYPE_NAME_PATTERN = /^(?:React|JSX|Element|Iterable|Promise|Awaited|Record|Array|Function|Set|Map|Document|Node|Boundary|Fragment)\b/
 
 /** Returns true if value looks like a TS type name rather than a real enum value */
-function isTypeName(value: string): boolean {
+export function isTypeName(value: string): boolean {
   if (TYPE_NAME_TOKENS.has(value)) return true
-  if (TYPE_NAME_PATTERN.test(value)) return true
+  // Prefixed React/JSX types like React.ReactNode, JSX.Element
+  if (/^(?:React|JSX)\./.test(value)) return true
   // Contains generics like Foo<Bar>
   if (value.includes('<') && value.includes('>')) return true
   // Contains => (function signature)
   if (value.includes('=>')) return true
   // Contains [] (array type) or {} (object literal type)
   if (value.includes('[]') || value.includes('{ ')) return true
-  // PascalCase single word that looks like a type (e.g. ReactPortal, LucideIcon, DocumentFragment)
-  if (/^[A-Z][a-zA-Z]+$/.test(value) && value.length > 6) return true
   return false
 }
 
 /** Filter values to only keep real enum/literal values */
-function cleanValues(values: string[] | undefined): string[] | undefined {
+export function cleanValues(values: string[] | undefined): string[] | undefined {
   if (!values) return undefined
   const clean = values.filter(
     (v) => v && v !== 'undefined' && v !== 'null' && !isTypeName(v),
@@ -159,7 +182,7 @@ const NODE_TYPE_PATTERNS = [/ReactNode/]
  * Also read the source to check the actual TS type annotation for icon props.
  * react-docgen-typescript often flattens LucideIcon | ReactNode → 'enum'.
  */
-function detectComponentKind(
+export function detectComponentKind(
   propName: string,
   rawType: string,
   source?: string,
@@ -334,16 +357,15 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
 
 // ── Registry generation ───────────────────────────────────────
 
-export function generateRegistry(meta: JcMeta): string {
+export function generateRegistry(meta: JcMeta, config: JcConfig): string {
+  const pathAlias = config.pathAlias ?? { '@/': 'src/' }
   const seen = new Set<string>()
   const entries: Array<{ name: string; importPath: string }> = []
 
   for (const comp of meta.components) {
     if (seen.has(comp.displayName)) continue
     seen.add(comp.displayName)
-    const importPath = comp.filePath
-      .replace(/^src\//, '@/')
-      .replace(/\.tsx$/, '')
+    const importPath = applyPathAlias(comp.filePath, pathAlias).replace(/\.tsx$/, '')
     entries.push({ name: comp.displayName, importPath })
   }
 
@@ -382,7 +404,7 @@ export function writeOutput(
     resolve(outputDir, 'meta.json'),
     JSON.stringify(meta, null, 2),
   )
-  writeFileSync(resolve(outputDir, 'registry.ts'), generateRegistry(meta))
+  writeFileSync(resolve(outputDir, 'registry.ts'), generateRegistry(meta, config))
 
   console.log(`[jc] Output → ${config.outputDir}/`)
   console.log(

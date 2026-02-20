@@ -30,6 +30,7 @@ export const defaultConfig: JcConfig = {
     '^data-',
   ],
   outputDir: 'src/jc/generated',
+  pathAlias: { '@/': 'src/' },
 }
 
 /** Merge user config with defaults */
@@ -41,6 +42,7 @@ export function resolveConfig(userConfig: Partial<JcConfig>): JcConfig {
     excludeComponents: userConfig.excludeComponents ?? defaultConfig.excludeComponents,
     filteredProps: userConfig.filteredProps ?? defaultConfig.filteredProps,
     filteredPropPatterns: userConfig.filteredPropPatterns ?? defaultConfig.filteredPropPatterns,
+    pathAlias: userConfig.pathAlias ?? defaultConfig.pathAlias,
   }
 }
 

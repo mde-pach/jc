@@ -56,7 +56,7 @@ async function main() {
     writeOutput(projectRoot, config, meta)
   } else if (command === '--help' || command === '-h') {
     console.log(`
-just-components (jc) — Component showcase toolkit
+jc — just-components showcase toolkit
 
 Commands:
   extract              Extract component metadata and generate registry
@@ -65,7 +65,7 @@ Commands:
 Configuration:
   Create a jc.config.ts at your project root:
 
-    import { defineConfig } from 'just-components/config'
+    import { defineConfig } from 'jc/config'
 
     export default defineConfig({
       componentGlob: 'src/components/ui/**/*.tsx',

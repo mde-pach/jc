@@ -1,5 +1,5 @@
 {
-  "name": "just-components",
+  "name": "jc",
   "version": "0.1.0",
   "description": "Auto-discovery component showcase with TypeScript props introspection and faker integration",
   "type": "module",
@@ -23,22 +23,25 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "bun run build"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.0.0",
-    "react-docgen-typescript": "^2.4.0"
+    "@faker-js/faker": "^10.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "react-docgen-typescript": "^2.4.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   },
   "keywords": [
     "components",

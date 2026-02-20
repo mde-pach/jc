@@ -14,12 +14,13 @@ export default defineConfig([
     treeshake: true,
     splitting: true,
   },
-  // CLI binary (Node.js, no React)
+  // CLI binary (Node.js, no React) — bundles all deps into a single file
   {
     entry: { cli: 'src/cli.ts' },
     format: ['cjs'],
     platform: 'node',
     banner: { js: '#!/usr/bin/env node' },
-    external: ['typescript', 'react-docgen-typescript'],
+    noExternal: ['react-docgen-typescript'],
+    external: ['typescript'],
   },
 ])

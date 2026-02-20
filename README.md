@@ -9,7 +9,7 @@ Think of it as a lightweight, zero-config alternative to Storybook — point it 
 ### 1. Install
 
 ```bash
-bun add just-components
+bun add jc
 ```
 
 ### 2. Extract metadata
@@ -39,8 +39,8 @@ export default function Page() {
 // src/app/jc/jc-page-client.tsx
 'use client'
 
-import type { JcMeta } from 'just-components'
-import { ShowcaseApp } from 'just-components'
+import type { JcMeta } from 'jc'
+import { ShowcaseApp } from 'jc'
 import meta from '@/jc/generated/meta.json'
 import { registry } from '@/jc/generated/registry'
 
@@ -56,7 +56,7 @@ Open `/jc` in your browser — you'll see a full component showcase with a sideb
 Create a `jc.config.ts` at your project root:
 
 ```ts
-import { defineConfig } from 'just-components/config'
+import { defineConfig } from 'jc/config'
 
 export default defineConfig({
   // Glob pattern for component files (relative to project root)
@@ -93,7 +93,7 @@ By default, component-type props (icons, ReactNode, etc.) show a plain text inpu
 
 ```ts
 // src/app/jc/fixtures.ts
-import { defineFixtures } from 'just-components'
+import { defineFixtures } from 'jc'
 import { Star, Heart, Zap, Bell, Search } from 'lucide-react'
 import { createElement } from 'react'
 
@@ -178,7 +178,7 @@ src/
 
 ## Exports
 
-### `just-components` (main entry)
+### `jc` (main entry)
 
 | Export | Type | Description |
 |--------|------|-------------|
@@ -193,7 +193,7 @@ src/
 | `JcControl` | Type | Resolved control definition |
 | `JcControlType` | Type | Control type union |
 
-### `just-components/config`
+### `jc/config`
 
 | Export | Type | Description |
 |--------|------|-------------|

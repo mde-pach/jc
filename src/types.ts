@@ -126,4 +126,11 @@ export interface JcConfig {
   filteredPropPatterns?: string[]
   /** Output directory for generated files (relative to project root) */
   outputDir: string
+  /**
+   * Path alias mapping for generated registry imports.
+   * Keys are the alias prefix, values are the source directory prefix they replace.
+   * @default { '@/': 'src/' }
+   * @example { '~/': 'src/', '@components/': 'src/components/' }
+   */
+  pathAlias?: Record<string, string>
 }
