@@ -7,14 +7,13 @@
  */
 
 import type { JcFixturePlugin, JcResolvedFixture } from '../types.js'
+import { toPascalCase } from './utils.js'
 
 /**
  * Flatten an array of fixture plugins into a single resolved list.
  * Each fixture receives a `qualifiedKey` ('pluginName/key') and `pluginName`.
  */
-export function resolveFixturePlugins(
-  plugins: JcFixturePlugin[] | undefined,
-): JcResolvedFixture[] {
+export function resolveFixturePlugins(plugins: JcFixturePlugin[] | undefined): JcResolvedFixture[] {
   if (!plugins || plugins.length === 0) return []
 
   const resolved: JcResolvedFixture[] = []
@@ -49,20 +48,12 @@ export function resolveFixtureValue(
 }
 
 /** Convert a qualified key to a readable JSX code string, e.g. 'lucide/star' → '<Star />' */
-export function fixtureToCodeString(
-  qualifiedKey: string,
-  fixtures: JcResolvedFixture[],
-): string {
+export function fixtureToCodeString(qualifiedKey: string, fixtures: JcResolvedFixture[]): string {
   if (!qualifiedKey) return ''
   const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
   if (!fixture) return qualifiedKey
 
-  // PascalCase the label for JSX-like output
-  const pascal = fixture.label
-    .split(/[\s-]+/)
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join('')
-  return `<${pascal} />`
+  return `<${toPascalCase(fixture.label)} />`
 }
 
 /**

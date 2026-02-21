@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import './globals.css'
 
 export const metadata = {
   title: 'jc — just-components',
@@ -9,18 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          WebkitFontSmoothing: 'antialiased',
-          color: '#111827',
-          backgroundColor: '#fff',
-        }}
-      >
-        {children}
-      </body>
+      <body className="m-0 font-sans antialiased text-gray-900 bg-white">{children}</body>
     </html>
   )
 }

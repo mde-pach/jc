@@ -45,17 +45,6 @@ export type JcControlType =
 /** Categories for component-type props */
 export type JcComponentPropKind = 'icon' | 'element' | 'node'
 
-/** Resolved control definition for a prop */
-export interface JcControl {
-  propName: string
-  controlType: JcControlType
-  label: string
-  description: string
-  required: boolean
-  defaultValue: unknown
-  options?: string[]
-}
-
 // ── Fixture plugin types ─────────────────────────────────────
 //
 // Fixtures let the host app supply real components (icons, badges, etc.)

@@ -3,7 +3,8 @@
  */
 
 import { faker } from '@faker-js/faker'
-import type { JcControlType, JcPropMeta } from '../types.js'
+import type { JcComponentMeta, JcControlType, JcPropMeta, JcResolvedFixture } from '../types.js'
+import { getDefaultFixtureKey } from './fixtures.js'
 
 /** Determine the control type for a prop */
 export function resolveControlType(prop: JcPropMeta): JcControlType {
@@ -62,7 +63,10 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
     return prop.defaultValue
   }
 
-  if (prop.values && prop.values.length > 0) return prop.values[0]
+  // Optional enum props start unselected; required ones pick the first value
+  if (prop.values && prop.values.length > 0) {
+    return prop.required ? prop.values[0] : undefined
+  }
   if (prop.type === 'boolean') return false
 
   if (prop.type === 'number') {
@@ -123,8 +127,7 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
       return faker.lorem.sentence()
     if (name === 'placeholder') return `${faker.lorem.words(2)}...`
     if (name.includes('email')) return faker.internet.email()
-    if (name.includes('url') || name.includes('href') || name === 'src')
-      return faker.internet.url()
+    if (name.includes('url') || name.includes('href') || name === 'src') return faker.internet.url()
     if (name.includes('image') || name.includes('avatar')) return faker.image.avatar()
     if (name.includes('color')) return faker.color.rgb()
     if (name.includes('date')) return faker.date.recent().toISOString().split('T')[0]
@@ -150,4 +153,25 @@ export function generateFakeChildren(componentName: string): string {
   if (name.includes('footer')) return faker.lorem.words(3)
   if (name.includes('tab')) return faker.lorem.word()
   return faker.lorem.words(3)
+}
+
+/**
+ * Generate smart default prop values for a component.
+ * Uses faker heuristics for primitive props; for component-type props,
+ * picks the first matching fixture key if fixtures are available.
+ */
+export function generateDefaults(
+  comp: JcComponentMeta,
+  fixtures: JcResolvedFixture[],
+): Record<string, unknown> {
+  const values: Record<string, unknown> = {}
+  for (const [name, prop] of Object.entries(comp.props)) {
+    const base = generateFakeValue(name, prop)
+    if (base === undefined && prop.componentKind && fixtures.length > 0 && prop.required) {
+      values[name] = getDefaultFixtureKey(fixtures, prop.componentKind)
+    } else {
+      values[name] = base
+    }
+  }
+  return values
 }

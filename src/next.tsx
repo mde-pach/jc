@@ -58,14 +58,7 @@ export function createShowcasePage(options: CreateShowcasePageOptions) {
   const { meta, registry, fixtures, wrapper } = options
 
   function JcShowcasePage() {
-    return (
-      <ShowcaseApp
-        meta={meta}
-        registry={registry}
-        fixtures={fixtures}
-        wrapper={wrapper}
-      />
-    )
+    return <ShowcaseApp meta={meta} registry={registry} fixtures={fixtures} wrapper={wrapper} />
   }
   JcShowcasePage.displayName = 'JcShowcasePage'
 

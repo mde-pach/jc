@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 
-/** A section heading with optional badge, title, and subtitle — used for page sections. */
+/** A section heading with an optional subtitle and trailing element. */
 export interface SectionHeaderProps {
-  /** Section title */
+  /** The section title */
   title: string
-  /** Optional subtitle text displayed below the title */
+  /** Optional subtitle displayed below the title */
   subtitle?: string
-  /** Optional badge content displayed above the title */
+  /** Optional trailing element (e.g. a Badge) */
   badge?: ReactNode
   /** Text alignment */
   align?: 'left' | 'center'
@@ -19,15 +19,16 @@ export function SectionHeader({
   align = 'center',
 }: SectionHeaderProps) {
   return (
-    <div style={{ textAlign: align, marginBottom: '56px' }}>
+    <div style={{ textAlign: align, marginBottom: '40px' }}>
       {badge && <div style={{ marginBottom: '12px' }}>{badge}</div>}
       <h2
         style={{
-          fontSize: '36px',
-          fontWeight: 800,
           margin: 0,
-          letterSpacing: '-0.03em',
+          fontSize: '28px',
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
           color: '#0f172a',
+          lineHeight: 1.2,
         }}
       >
         {title}
@@ -35,11 +36,13 @@ export function SectionHeader({
       {subtitle && (
         <p
           style={{
+            margin: '8px 0 0',
             fontSize: '16px',
             color: '#64748b',
-            margin: '8px auto 0',
-            maxWidth: '480px',
             lineHeight: 1.6,
+            maxWidth: align === 'center' ? '540px' : undefined,
+            marginLeft: align === 'center' ? 'auto' : undefined,
+            marginRight: align === 'center' ? 'auto' : undefined,
           }}
         >
           {subtitle}

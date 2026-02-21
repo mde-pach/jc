@@ -50,7 +50,9 @@ export function ShowcaseControls({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '10px 16px',
+          padding: '0 16px',
+          height: '42px',
+          flexShrink: 0,
           borderBottom: '1px solid var(--jc-border)',
         }}
       >
@@ -72,7 +74,7 @@ export function ShowcaseControls({
           style={{
             fontSize: '10px',
             fontWeight: 500,
-            color: '#3b82f6',
+            color: 'var(--jc-accent)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -124,6 +126,7 @@ export function ShowcaseControls({
                 style={{
                   height: '28px',
                   width: '100%',
+                  boxSizing: 'border-box',
                   borderRadius: '4px',
                   border: '1px solid var(--jc-border)',
                   backgroundColor: 'transparent',
@@ -168,7 +171,15 @@ export function ShowcaseControls({
               )
             })
           : !component.acceptsChildren && (
-              <p style={{ fontSize: '11px', opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '16px 0' }}>
+              <p
+                style={{
+                  fontSize: '11px',
+                  opacity: 0.4,
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  padding: '16px 0',
+                }}
+              >
                 No editable props
               </p>
             )}

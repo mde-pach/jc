@@ -41,7 +41,7 @@ export function Alert({
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         gap: '8px',
-        maxWidth: '400px',
+        maxWidth: '100%',
       }}
     >
       <div>

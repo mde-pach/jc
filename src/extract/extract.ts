@@ -2,18 +2,18 @@
  * Core extraction logic — Node.js only, no Bun APIs.
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from 'node:fs'
 import * as fs from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { withCompilerOptions } from 'react-docgen-typescript'
 import ts from 'typescript'
-import type { JcComponentMeta, JcComponentPropKind, JcConfig, JcMeta, JcPropMeta } from '../types.js'
+import type {
+  JcComponentMeta,
+  JcComponentPropKind,
+  JcConfig,
+  JcMeta,
+  JcPropMeta,
+} from '../types.js'
 
 /** Apply path alias mapping: replace source prefixes with alias prefixes */
 export function applyPathAlias(filePath: string, pathAlias: Record<string, string>): string {
@@ -31,6 +31,7 @@ export function applyPathAlias(filePath: string, pathAlias: Record<string, strin
  */
 function findFiles(pattern: string, cwd: string): string[] {
   // Node 22+ globSync (accessed dynamically to avoid import errors on Bun/older Node)
+  // biome-ignore lint/suspicious/noExplicitAny: globSync is not in @types/node < 22, runtime feature-detect only
   const maybeGlobSync = (fs as any).globSync
   if (typeof maybeGlobSync === 'function') {
     try {
@@ -66,6 +67,13 @@ function findFiles(pattern: string, cwd: string): string[] {
 // ── Parser setup ──────────────────────────────────────────────
 
 function createParser(projectRoot: string, config: JcConfig) {
+  // Build TS paths from config pathAlias (default: { '@/': 'src/' })
+  const pathAlias = config.pathAlias ?? { '@/': 'src/' }
+  const tsPaths: Record<string, string[]> = {}
+  for (const [alias, sourcePrefix] of Object.entries(pathAlias)) {
+    tsPaths[`${alias}*`] = [`./${sourcePrefix}*`]
+  }
+
   return withCompilerOptions(
     {
       esModuleInterop: true,
@@ -74,7 +82,7 @@ function createParser(projectRoot: string, config: JcConfig) {
       moduleResolution: ts.ModuleResolutionKind.Bundler,
       target: ts.ScriptTarget.ES2020,
       strict: true,
-      paths: { '@/*': ['./src/*'] },
+      paths: tsPaths,
       baseUrl: projectRoot,
     },
     {
@@ -92,7 +100,7 @@ function createParser(projectRoot: string, config: JcConfig) {
 
 // ── Prop filtering ────────────────────────────────────────────
 
-function createPropFilter(config: JcConfig) {
+export function createPropFilter(config: JcConfig) {
   const filteredSet = new Set(config.filteredProps ?? [])
   const patterns = (config.filteredPropPatterns ?? []).map((p) => new RegExp(p))
 
@@ -131,22 +139,65 @@ export function extractValues(rawType: string): string[] | undefined {
  */
 const TYPE_NAME_TOKENS = new Set([
   // JS primitives
-  'string', 'number', 'bigint', 'boolean', 'symbol', 'object',
-  'true', 'false', 'void', 'never', 'any', 'unknown',
+  'string',
+  'number',
+  'bigint',
+  'boolean',
+  'symbol',
+  'object',
+  'true',
+  'false',
+  'void',
+  'never',
+  'any',
+  'unknown',
   // React types that leak through docgen
-  'ReactNode', 'ReactElement', 'ReactPortal', 'ReactFragment',
-  'ReactChild', 'ReactText', 'ReactInstance',
-  'JSXElement', 'JSXFragment',
-  'Element', 'DocumentFragment', 'Node',
-  'ComponentType', 'ComponentClass', 'FunctionComponent',
-  'ForwardRefExoticComponent', 'LazyExoticComponent', 'MemoExoticComponent',
-  'LucideIcon', 'IconType',
+  'ReactNode',
+  'ReactElement',
+  'ReactPortal',
+  'ReactFragment',
+  'ReactChild',
+  'ReactText',
+  'ReactInstance',
+  'JSXElement',
+  'JSXFragment',
+  'Element',
+  'DocumentFragment',
+  'Node',
+  'ComponentType',
+  'ComponentClass',
+  'FunctionComponent',
+  'ForwardRefExoticComponent',
+  'LazyExoticComponent',
+  'MemoExoticComponent',
+  'LucideIcon',
+  'IconType',
   // Common TS utility types
-  'Partial', 'Required', 'Readonly', 'Record', 'Pick', 'Omit',
-  'Exclude', 'Extract', 'NonNullable', 'ReturnType', 'InstanceType',
-  'Promise', 'Awaited', 'Iterable', 'Iterator', 'AsyncIterable',
-  'Array', 'Set', 'Map', 'WeakSet', 'WeakMap',
-  'Function', 'Date', 'RegExp', 'Error',
+  'Partial',
+  'Required',
+  'Readonly',
+  'Record',
+  'Pick',
+  'Omit',
+  'Exclude',
+  'Extract',
+  'NonNullable',
+  'ReturnType',
+  'InstanceType',
+  'Promise',
+  'Awaited',
+  'Iterable',
+  'Iterator',
+  'AsyncIterable',
+  'Array',
+  'Set',
+  'Map',
+  'WeakSet',
+  'WeakMap',
+  'Function',
+  'Date',
+  'RegExp',
+  'Error',
 ])
 
 /** Returns true if value looks like a TS type name rather than a real enum value */
@@ -166,10 +217,20 @@ export function isTypeName(value: string): boolean {
 /** Filter values to only keep real enum/literal values */
 export function cleanValues(values: string[] | undefined): string[] | undefined {
   if (!values) return undefined
-  const clean = values.filter(
-    (v) => v && v !== 'undefined' && v !== 'null' && !isTypeName(v),
-  )
+  const clean = values.filter((v) => v && v !== 'undefined' && v !== 'null' && !isTypeName(v))
   return clean.length > 0 ? clean : undefined
+}
+
+/** Check if a raw enum type is actually a boolean (only 'true'/'false' values) */
+export function isBooleanEnum(rawType: string, rawValues: string[] | undefined): boolean {
+  if (rawType !== 'enum' || !rawValues) return false
+  const meaningful = rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null')
+  return meaningful.length <= 2 && meaningful.every((v: string) => v === 'true' || v === 'false')
+}
+
+/** Detect if a component source accepts children via destructuring or props.children */
+export function detectAcceptsChildren(source: string): boolean {
+  return /\{\s*[^}]*\bchildren\b/.test(source) || /props\.children/.test(source)
 }
 
 // ── Component prop detection ─────────────────────────────────
@@ -205,7 +266,9 @@ export function detectComponentKind(
     // Check source to distinguish LucideIcon (constructor) from ReactNode (element)
     if (source) {
       // Look for `icon?: LucideIcon` or `icon: ComponentType` patterns
-      const constructorPattern = new RegExp(`${propName}\\??\\s*:\\s*(?:LucideIcon|ComponentType|FC|Icon)\\b`)
+      const constructorPattern = new RegExp(
+        `${propName}\\??\\s*:\\s*(?:LucideIcon|ComponentType|FC|Icon)\\b`,
+      )
       if (constructorPattern.test(source)) return 'icon'
       // Look for `icon?: React.ReactNode` or `icon?: ReactNode`
       const nodePattern = new RegExp(`${propName}\\??\\s*:\\s*(?:React\\.)?ReactNode`)
@@ -216,8 +279,13 @@ export function detectComponentKind(
 
   // Name-based heuristic for common ReactNode props
   const CONFIDENT_NODE_NAMES = new Set([
-    'badge', 'action', 'actions', 'prefix', 'suffix',
-    'breadcrumbs', 'separator',
+    'badge',
+    'action',
+    'actions',
+    'prefix',
+    'suffix',
+    'breadcrumbs',
+    'separator',
   ])
   if (CONFIDENT_NODE_NAMES.has(name)) {
     if (rawType === 'enum' || /Node|Element|JSX|ReactNode/.test(rawType)) {
@@ -225,9 +293,7 @@ export function detectComponentKind(
     }
   }
   // Less confident names — only match if type explicitly mentions Node/Element
-  const LESS_CONFIDENT_NODE_NAMES = new Set([
-    'header', 'footer', 'trigger', 'label',
-  ])
+  const LESS_CONFIDENT_NODE_NAMES = new Set(['header', 'footer', 'trigger', 'label'])
   if (LESS_CONFIDENT_NODE_NAMES.has(name)) {
     if (/Node|Element|JSX|ReactNode/.test(rawType)) {
       return 'node'
@@ -274,8 +340,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
         if (excludeNames.has(doc.displayName)) continue
 
         const props: Record<string, JcPropMeta> = {}
-        let acceptsChildren =
-          /\{\s*[^}]*\bchildren\b/.test(source) || /props\.children/.test(source)
+        let acceptsChildren = detectAcceptsChildren(source)
 
         for (const [propName, propInfo] of Object.entries(doc.props)) {
           if (propName === 'children') {
@@ -287,29 +352,19 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
           const rawType = propInfo.type?.name ?? 'unknown'
           const rawValues =
             extractValues(rawType) ??
-            (propInfo.type as any)?.value?.map((v: any) =>
-              v.value?.replace(/"/g, ''),
-            ) ??
+            // biome-ignore lint/suspicious/noExplicitAny: react-docgen-typescript exposes untyped .value array on union types
+            (propInfo.type as any)?.value?.map((v: any) => v.value?.replace(/"/g, '')) ??
             undefined
           const values = cleanValues(rawValues)
-          const isBooleanEnum =
-            rawType === 'enum' &&
-            rawValues &&
-            rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null').length <= 2 &&
-            rawValues.filter((v: string) => v && v !== 'undefined' && v !== 'null')
-              .every((v: string) => v === 'true' || v === 'false')
+          const boolEnum = isBooleanEnum(rawType, rawValues)
 
           const componentKind = detectComponentKind(propName, rawType, source)
 
           props[propName] = {
             name: propName,
-            type: isBooleanEnum ? 'boolean' : simplifyType(rawType),
+            type: boolEnum ? 'boolean' : simplifyType(rawType),
             rawType,
-            values: isBooleanEnum
-              ? undefined
-              : values?.length
-                ? values
-                : undefined,
+            values: boolEnum ? undefined : values?.length ? values : undefined,
             required: propInfo.required,
             defaultValue: propInfo.defaultValue?.value,
             description: propInfo.description ?? '',
@@ -320,7 +375,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
 
         components.push({
           displayName: doc.displayName,
-          filePath: file.replace(projectRoot + '/', ''),
+          filePath: file.replace(`${projectRoot}/`, ''),
           description: doc.description ?? '',
           props,
           acceptsChildren,
@@ -335,10 +390,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
   const deduped = new Map<string, JcComponentMeta>()
   for (const comp of components) {
     const existing = deduped.get(comp.displayName)
-    if (
-      !existing ||
-      Object.keys(comp.props).length > Object.keys(existing.props).length
-    ) {
+    if (!existing || Object.keys(comp.props).length > Object.keys(existing.props).length) {
       deduped.set(comp.displayName, comp)
     }
   }
@@ -379,9 +431,7 @@ export function generateRegistry(meta: JcMeta, config: JcConfig): string {
   ]
 
   for (const { name, importPath } of entries) {
-    lines.push(
-      `  '${name}': () => import('${importPath}').then(m => (m as any).${name}),`,
-    )
+    lines.push(`  '${name}': () => import('${importPath}').then(m => (m as any).${name}),`)
   }
 
   lines.push('}', '')
@@ -390,33 +440,22 @@ export function generateRegistry(meta: JcMeta, config: JcConfig): string {
 
 // ── Write output ──────────────────────────────────────────────
 
-export function writeOutput(
-  projectRoot: string,
-  config: JcConfig,
-  meta: JcMeta,
-): void {
+export function writeOutput(projectRoot: string, config: JcConfig, meta: JcMeta): void {
   const outputDir = resolve(projectRoot, config.outputDir)
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true })
   }
 
-  writeFileSync(
-    resolve(outputDir, 'meta.json'),
-    JSON.stringify(meta, null, 2),
-  )
+  writeFileSync(resolve(outputDir, 'meta.json'), JSON.stringify(meta, null, 2))
   writeFileSync(resolve(outputDir, 'registry.ts'), generateRegistry(meta, config))
 
   console.log(`[jc] Output → ${config.outputDir}/`)
-  console.log(
-    `[jc]   meta.json (${meta.components.length} components)`,
-  )
+  console.log(`[jc]   meta.json (${meta.components.length} components)`)
   console.log('[jc]   registry.ts')
 
   for (const comp of meta.components) {
     const propCount = Object.keys(comp.props).length
     const propNames = Object.keys(comp.props).join(', ')
-    console.log(
-      `  ${comp.displayName} (${propCount} props${propNames ? `: ${propNames}` : ''})`,
-    )
+    console.log(`  ${comp.displayName} (${propCount} props${propNames ? `: ${propNames}` : ''})`)
   }
 }

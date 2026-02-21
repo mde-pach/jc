@@ -20,6 +20,10 @@
   "bin": {
     "jc": "./dist/cli.cjs"
   },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "dist",
     "README.md"
@@ -29,7 +33,11 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "format": "biome format --write src",
     "prepublishOnly": "bun run build"
   },
   "peerDependencies": {
@@ -40,8 +48,11 @@
     "@faker-js/faker": "^10.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^28.1.0",
     "react-docgen-typescript": "^2.4.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",

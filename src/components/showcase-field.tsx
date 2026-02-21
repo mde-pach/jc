@@ -7,8 +7,9 @@
  * Component-type props use the fixture system for their picker UI.
  */
 
-import type { JcComponentPropKind, JcControlType, JcPropMeta, JcResolvedFixture } from '../types.js'
+import { useState } from 'react'
 import { getArrayItemType } from '../lib/faker-map.js'
+import type { JcComponentPropKind, JcControlType, JcPropMeta, JcResolvedFixture } from '../types.js'
 
 interface ShowcaseFieldProps {
   label: string
@@ -109,9 +110,7 @@ export function ShowcaseField({
         )}
       </div>
 
-      {description && (
-        <p style={{ fontSize: '10px', opacity: 0.4, margin: 0 }}>{description}</p>
-      )}
+      {description && <p style={{ fontSize: '10px', opacity: 0.4, margin: 0 }}>{description}</p>}
 
       {controlType === 'text' && (
         <input
@@ -134,9 +133,10 @@ export function ShowcaseField({
       {controlType === 'select' && options && (
         <select
           value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value || undefined)}
           style={inputStyle}
         >
+          {propMeta && !propMeta.required && <option value="">—</option>}
           {options.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
@@ -150,6 +150,7 @@ export function ShowcaseField({
           value={String(value ?? '')}
           kind={componentKind ?? 'node'}
           fixtures={fixtures ?? []}
+          required={propMeta?.required ?? false}
           onChange={(v) => onChange(v)}
         />
       )}
@@ -425,11 +426,13 @@ function ComponentPicker({
   value,
   kind,
   fixtures,
+  required,
   onChange,
 }: {
   value: string
   kind: 'icon' | 'element' | 'node'
   fixtures: JcResolvedFixture[]
+  required: boolean
   onChange: (key: string) => void
 }) {
   // No fixtures available → text input fallback
@@ -446,6 +449,7 @@ function ComponentPicker({
   }
 
   if (kind === 'icon') {
+    const hasSelection = value !== '' && value != null
     // Grid of icon buttons using fixture renderIcon/render
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -462,8 +466,8 @@ function ComponentPicker({
               <button
                 key={f.qualifiedKey}
                 type="button"
-                title={f.label}
-                onClick={() => onChange(f.qualifiedKey)}
+                title={isActive && !required ? `${f.label} (click to deselect)` : f.label}
+                onClick={() => onChange(!required && isActive ? '' : f.qualifiedKey)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -486,18 +490,19 @@ function ComponentPicker({
             )
           })}
         </div>
+        {!required && !hasSelection && (
+          <span style={{ fontSize: '9px', opacity: 0.35, fontStyle: 'italic' }}>
+            Optional — select an icon or leave empty
+          </span>
+        )}
       </div>
     )
   }
 
   // Dropdown for element/node types
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={inputStyle}
-    >
-      <option value="">None</option>
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
+      <option value="">{required ? 'Select...' : '—'}</option>
       {fixtures.map((f) => (
         <option key={f.qualifiedKey} value={f.qualifiedKey}>
           {f.label}
@@ -509,10 +514,11 @@ function ComponentPicker({
 
 // ── Fixture picker for children mode ─────────────────────────
 //
-// Dropdown selector used when children mode is 'fixture'.
-// Lets the user pick any available fixture to render as children.
+// Namespace-aware picker used when children mode is 'fixture'.
+// Groups fixtures by plugin name, shows tabs to switch namespace,
+// then renders the appropriate selector (icon grid or dropdown).
 
-/** Dropdown fixture selector for the children control in fixture mode */
+/** Namespace-aware fixture selector for the children control in fixture mode */
 export function FixturePicker({
   value,
   fixtures,
@@ -522,21 +528,104 @@ export function FixturePicker({
   fixtures: JcResolvedFixture[]
   onChange: (key: string | null) => void
 }) {
+  // Group fixtures by plugin namespace
+  const namespaces = new Map<string, JcResolvedFixture[]>()
+  for (const f of fixtures) {
+    const group = namespaces.get(f.pluginName) ?? []
+    group.push(f)
+    namespaces.set(f.pluginName, group)
+  }
+  const namespaceNames = Array.from(namespaces.keys())
+
+  // Derive initial namespace from current value, otherwise none selected
+  const initialNs = value ? (fixtures.find((f) => f.qualifiedKey === value)?.pluginName ?? '') : ''
+  const [selectedNs, setSelectedNs] = useState(initialNs)
+
   if (fixtures.length === 0) return null
 
+  // Resolve active namespace (fall back to empty if selection is stale)
+  const activeNs = selectedNs && namespaceNames.includes(selectedNs) ? selectedNs : ''
+  const nsFixtures = activeNs ? (namespaces.get(activeNs) ?? []) : []
+  const isIconCategory = nsFixtures.some((f) => f.category === 'icons' || f.category === 'icon')
+
   return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
-      style={inputStyle}
-    >
-      <option value="">Select a fixture...</option>
-      {fixtures.map((f) => (
-        <option key={f.qualifiedKey} value={f.qualifiedKey}>
-          {f.label}
-        </option>
-      ))}
-    </select>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {/* Namespace selector — always shown */}
+      <select
+        value={activeNs}
+        onChange={(e) => {
+          setSelectedNs(e.target.value)
+          // Clear fixture selection when switching namespace
+          if (e.target.value !== activeNs) onChange(null)
+        }}
+        style={inputStyle}
+      >
+        <option value="">Select a category...</option>
+        {namespaceNames.map((ns) => (
+          <option key={ns} value={ns}>
+            {ns}
+          </option>
+        ))}
+      </select>
+
+      {/* Fixture picker — only shown after namespace is selected */}
+      {activeNs &&
+        (isIconCategory ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: '2px',
+            }}
+          >
+            {nsFixtures.map((f) => {
+              const isActive = value === f.qualifiedKey
+              return (
+                <button
+                  key={f.qualifiedKey}
+                  type="button"
+                  title={f.label}
+                  onClick={() => onChange(f.qualifiedKey)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '30px',
+                    borderRadius: '4px',
+                    border: isActive
+                      ? '1.5px solid var(--jc-accent)'
+                      : '1px solid var(--jc-border)',
+                    backgroundColor: isActive
+                      ? 'color-mix(in srgb, var(--jc-accent) 10%, transparent)'
+                      : 'transparent',
+                    color: isActive ? 'var(--jc-accent)' : 'inherit',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    opacity: isActive ? 1 : 0.5,
+                    transition: 'all 0.1s',
+                    padding: 0,
+                  }}
+                >
+                  {f.renderIcon?.() ?? f.render()}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <select
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value || null)}
+            style={inputStyle}
+          >
+            <option value="">Select a fixture...</option>
+            {nsFixtures.map((f) => (
+              <option key={f.qualifiedKey} value={f.qualifiedKey}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        ))}
+    </div>
   )
 }
 
@@ -545,6 +634,7 @@ export function FixturePicker({
 const inputStyle: React.CSSProperties = {
   height: '28px',
   width: '100%',
+  boxSizing: 'border-box',
   borderRadius: '4px',
   border: '1px solid var(--jc-border)',
   backgroundColor: 'transparent',

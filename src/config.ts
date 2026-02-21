@@ -3,17 +3,8 @@ import type { JcConfig } from './types.js'
 /** Default configuration — sensible defaults for shadcn/ui projects */
 export const defaultConfig: JcConfig = {
   componentGlob: 'src/components/ui/**/*.tsx',
-  excludeFiles: [
-    'index.ts',
-    'toaster.tsx',
-    'form.tsx',
-    'form-fields.tsx',
-  ],
-  excludeComponents: [
-    'DialogPortal',
-    'DialogOverlay',
-    'DialogClose',
-  ],
+  excludeFiles: ['index.ts', 'toaster.tsx', 'form.tsx', 'form-fields.tsx'],
+  excludeComponents: ['DialogPortal', 'DialogOverlay', 'DialogClose'],
   filteredProps: [
     'ref',
     'key',
@@ -45,9 +36,15 @@ export function resolveConfig(userConfig: Partial<JcConfig>): JcConfig {
     ...defaultConfig,
     ...userConfig,
     excludeFiles: mergeArrays(defaultConfig.excludeFiles ?? [], userConfig.excludeFiles),
-    excludeComponents: mergeArrays(defaultConfig.excludeComponents ?? [], userConfig.excludeComponents),
+    excludeComponents: mergeArrays(
+      defaultConfig.excludeComponents ?? [],
+      userConfig.excludeComponents,
+    ),
     filteredProps: mergeArrays(defaultConfig.filteredProps ?? [], userConfig.filteredProps),
-    filteredPropPatterns: mergeArrays(defaultConfig.filteredPropPatterns ?? [], userConfig.filteredPropPatterns),
+    filteredPropPatterns: mergeArrays(
+      defaultConfig.filteredPropPatterns ?? [],
+      userConfig.filteredPropPatterns,
+    ),
     pathAlias: userConfig.pathAlias ?? defaultConfig.pathAlias,
   }
 }

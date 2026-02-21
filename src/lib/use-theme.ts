@@ -10,12 +10,19 @@ export type JcThemeMode = 'auto' | 'light' | 'dark'
  *
  * Default: 'auto' — follows the host app's theme.
  * User can cycle through: auto → light → dark → auto.
+ *
+ * Always starts with 'light' during SSR to avoid hydration mismatches,
+ * then detects the real theme in a client-side effect.
  */
 export function useTheme() {
   const [mode, setMode] = useState<JcThemeMode>('auto')
-  const [detected, setDetected] = useState<JcTheme>(() => detect())
+  // Always start 'light' to match SSR — detect real theme in useEffect
+  const [detected, setDetected] = useState<JcTheme>('light')
 
   useEffect(() => {
+    // Detect on mount
+    setDetected(detect())
+
     const html = document.documentElement
     const observer = new MutationObserver(() => setDetected(detect()))
     observer.observe(html, {
@@ -46,13 +53,7 @@ export function useTheme() {
   return { theme: resolved, mode, cycle }
 }
 
-// Keep backwards compat
-export function useThemeDetection(): JcTheme {
-  const { theme } = useTheme()
-  return theme
-}
-
-function detect(): JcTheme {
+export function detect(): JcTheme {
   if (typeof document === 'undefined') return 'light'
   const html = document.documentElement
 

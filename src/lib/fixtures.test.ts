@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { JcFixturePlugin, JcResolvedFixture } from '../types.js'
+import type { JcFixturePlugin } from '../types.js'
 import {
+  defineFixtures,
   fixtureToCodeString,
   getDefaultFixtureKey,
   getFixturesForKind,
@@ -19,9 +20,7 @@ const mockPlugin: JcFixturePlugin = {
 
 const mockPlugin2: JcFixturePlugin = {
   name: 'custom',
-  fixtures: [
-    { key: 'logo', label: 'App Logo', category: 'icons', render: () => 'logo-node' },
-  ],
+  fixtures: [{ key: 'logo', label: 'App Logo', category: 'icons', render: () => 'logo-node' }],
 }
 
 // ── resolveFixturePlugins ─────────────────────────────────────
@@ -70,6 +69,27 @@ describe('resolveFixtureValue', () => {
 
   it('returns undefined for unknown key', () => {
     expect(resolveFixtureValue('test/unknown', resolved)).toBeUndefined()
+  })
+
+  it('returns component constructor when asConstructor is true', () => {
+    const MockComponent = () => null
+    const pluginWithComponent: JcFixturePlugin = {
+      name: 'icons',
+      fixtures: [
+        {
+          key: 'star',
+          label: 'Star',
+          render: () => 'star-node',
+          component: MockComponent,
+        },
+      ],
+    }
+    const resolvedWithComponent = resolveFixturePlugins([pluginWithComponent])
+    expect(resolveFixtureValue('icons/star', resolvedWithComponent, true)).toBe(MockComponent)
+  })
+
+  it('falls back to render() when asConstructor is true but no component field', () => {
+    expect(resolveFixtureValue('test/star', resolved, true)).toBe('star-node')
   })
 })
 
@@ -133,5 +153,17 @@ describe('getDefaultFixtureKey', () => {
 
   it('returns undefined for empty fixtures', () => {
     expect(getDefaultFixtureKey([], 'icon')).toBeUndefined()
+  })
+})
+
+// ── defineFixtures ───────────────────────────────────────────
+
+describe('defineFixtures', () => {
+  it('returns the same plugin object (identity)', () => {
+    const plugin: JcFixturePlugin = {
+      name: 'test',
+      fixtures: [{ key: 'a', label: 'A', render: () => 'a' }],
+    }
+    expect(defineFixtures(plugin)).toBe(plugin)
   })
 })

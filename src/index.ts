@@ -9,12 +9,11 @@
 export { ShowcaseApp } from './components/showcase-app.js'
 export { defineFixtures } from './lib/fixtures.js'
 export type {
-  JcMeta,
   JcComponentMeta,
-  JcPropMeta,
-  JcControl,
-  JcControlType,
   JcConfig,
+  JcControlType,
   JcFixture,
   JcFixturePlugin,
+  JcMeta,
+  JcPropMeta,
 } from './types.js'

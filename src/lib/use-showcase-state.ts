@@ -8,8 +8,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JcComponentMeta, JcFixturePlugin, JcMeta, JcResolvedFixture } from '../types.js'
-import { generateFakeChildren, generateFakeValue } from './faker-map.js'
-import { getDefaultFixtureKey, resolveFixturePlugins } from './fixtures.js'
+import { generateDefaults, generateFakeChildren } from './faker-map.js'
+import { resolveFixturePlugins } from './fixtures.js'
 
 /** Read the ?component= param from the current URL */
 function getComponentFromUrl(): string | null {
@@ -26,9 +26,29 @@ function setComponentInUrl(name: string): void {
   window.history.replaceState({}, '', url.toString())
 }
 
+/** Reset prop values, children text, and children mode to defaults for a component */
+function resetToDefaults(
+  comp: JcComponentMeta,
+  fixtures: JcResolvedFixture[],
+): {
+  propValues: Record<string, unknown>
+  childrenText: string
+  childrenMode: 'text' | 'fixture'
+  childrenFixtureKey: string | null
+} {
+  return {
+    propValues: generateDefaults(comp, fixtures),
+    childrenText: comp.acceptsChildren ? generateFakeChildren(comp.displayName) : '',
+    childrenMode: 'text',
+    childrenFixtureKey: null,
+  }
+}
+
 /** Full state shape returned by useShowcaseState */
 export interface ShowcaseState {
   meta: JcMeta
+  /** Whether client-side initialization (URL sync + faker defaults) is complete */
+  ready: boolean
   selectedName: string | null
   selectedComponent: JcComponentMeta | null
   search: string
@@ -47,58 +67,40 @@ export interface ShowcaseState {
   resetProps: () => void
 }
 
-/**
- * Generate smart default prop values for a component.
- * Uses faker heuristics for primitive props; for component-type props,
- * picks the first matching fixture key if fixtures are available.
- */
-function generateDefaults(
-  comp: JcComponentMeta,
-  fixtures: JcResolvedFixture[],
-): Record<string, unknown> {
-  const values: Record<string, unknown> = {}
-  for (const [name, prop] of Object.entries(comp.props)) {
-    const base = generateFakeValue(name, prop)
-    if (base === undefined && prop.componentKind && fixtures.length > 0) {
-      values[name] = getDefaultFixtureKey(fixtures, prop.componentKind)
-    } else {
-      values[name] = base
-    }
-  }
-  return values
-}
+export function useShowcaseState(meta: JcMeta, fixturePlugins?: JcFixturePlugin[]): ShowcaseState {
+  const resolvedFixtures = useMemo(() => resolveFixturePlugins(fixturePlugins), [fixturePlugins])
 
-export function useShowcaseState(
-  meta: JcMeta,
-  fixturePlugins?: JcFixturePlugin[],
-): ShowcaseState {
-  const resolvedFixtures = useMemo(
-    () => resolveFixturePlugins(fixturePlugins),
-    [fixturePlugins],
-  )
-
-  // Resolve initial component from URL or fall back to first
-  const initialComponent = useMemo(() => {
-    const fromUrl = getComponentFromUrl()
-    if (fromUrl) {
-      const match = meta.components.find((c) => c.displayName === fromUrl)
-      if (match) return match
-    }
-    return meta.components[0] ?? null
-  }, [meta.components])
+  // Always start with first component during SSR to avoid hydration mismatch.
+  // URL sync happens client-side in useEffect below.
+  const firstComponent = meta.components[0] ?? null
 
   const [selectedName, setSelectedName] = useState<string | null>(
-    initialComponent?.displayName ?? null,
+    firstComponent?.displayName ?? null,
   )
   const [search, setSearch] = useState('')
-  const [propValues, setPropValues] = useState<Record<string, unknown>>(() => {
-    return initialComponent ? generateDefaults(initialComponent, resolvedFixtures) : {}
-  })
-  const [childrenText, setChildrenText] = useState(() => {
-    return initialComponent?.acceptsChildren ? generateFakeChildren(initialComponent.displayName) : ''
-  })
+  const [propValues, setPropValues] = useState<Record<string, unknown>>({})
+  const [childrenText, setChildrenText] = useState('')
   const [childrenMode, setChildrenMode] = useState<'text' | 'fixture'>('text')
   const [childrenFixtureKey, setChildrenFixtureKey] = useState<string | null>(null)
+  const [initialized, setInitialized] = useState(false)
+
+  // Client-side only: read URL param and generate faker defaults
+  useEffect(() => {
+    if (initialized) return
+    const fromUrl = getComponentFromUrl()
+    const target = fromUrl
+      ? (meta.components.find((c) => c.displayName === fromUrl) ?? firstComponent)
+      : firstComponent
+    if (target) {
+      if (target.displayName !== firstComponent?.displayName) {
+        setSelectedName(target.displayName)
+      }
+      const defaults = resetToDefaults(target, resolvedFixtures)
+      setPropValues(defaults.propValues)
+      setChildrenText(defaults.childrenText)
+    }
+    setInitialized(true)
+  }, [initialized, meta.components, firstComponent, resolvedFixtures])
 
   const selectedComponent = useMemo(
     () => meta.components.find((c) => c.displayName === selectedName) ?? null,
@@ -114,7 +116,7 @@ export function useShowcaseState(
   // Sync URL on initial mount
   useEffect(() => {
     if (selectedName) setComponentInUrl(selectedName)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedName]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectComponent = useCallback(
     (name: string) => {
@@ -122,10 +124,11 @@ export function useShowcaseState(
       setComponentInUrl(name)
       const comp = meta.components.find((c) => c.displayName === name)
       if (comp) {
-        setPropValues(generateDefaults(comp, resolvedFixtures))
-        setChildrenText(comp.acceptsChildren ? generateFakeChildren(name) : '')
-        setChildrenMode('text')
-        setChildrenFixtureKey(null)
+        const defaults = resetToDefaults(comp, resolvedFixtures)
+        setPropValues(defaults.propValues)
+        setChildrenText(defaults.childrenText)
+        setChildrenMode(defaults.childrenMode)
+        setChildrenFixtureKey(defaults.childrenFixtureKey)
       }
     },
     [meta.components, resolvedFixtures],
@@ -135,21 +138,19 @@ export function useShowcaseState(
     setPropValues((prev) => ({ ...prev, [propName]: value }))
   }, [])
 
-  const resetProps = useCallback(() => {
+  const resetPropsAction = useCallback(() => {
     if (selectedComponent) {
-      setPropValues(generateDefaults(selectedComponent, resolvedFixtures))
-      setChildrenText(
-        selectedComponent.acceptsChildren
-          ? generateFakeChildren(selectedComponent.displayName)
-          : '',
-      )
-      setChildrenMode('text')
-      setChildrenFixtureKey(null)
+      const defaults = resetToDefaults(selectedComponent, resolvedFixtures)
+      setPropValues(defaults.propValues)
+      setChildrenText(defaults.childrenText)
+      setChildrenMode(defaults.childrenMode)
+      setChildrenFixtureKey(defaults.childrenFixtureKey)
     }
   }, [selectedComponent, resolvedFixtures])
 
   return {
     meta,
+    ready: initialized,
     selectedName,
     selectedComponent,
     search,
@@ -165,6 +166,6 @@ export function useShowcaseState(
     setChildrenText,
     setChildrenMode,
     setChildrenFixtureKey,
-    resetProps,
+    resetProps: resetPropsAction,
   }
 }

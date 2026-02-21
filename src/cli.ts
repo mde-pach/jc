@@ -8,7 +8,7 @@
  */
 
 import { existsSync, watch } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { resolveConfig } from './config.js'
 import { extract, writeOutput } from './extract/extract.js'
@@ -28,7 +28,7 @@ async function loadConfig(projectRoot: string, configPath?: string): Promise<Par
       try {
         // Use dynamic import with file URL for cross-platform compat
         const mod = await import(pathToFileURL(candidate).href)
-        console.log(`[jc] Config loaded from ${candidate.replace(projectRoot + '/', '')}`)
+        console.log(`[jc] Config loaded from ${candidate.replace(`${projectRoot}/`, '')}`)
         return mod.default ?? mod
       } catch (err) {
         console.warn(`[jc] Failed to load config ${candidate}: ${err}`)
@@ -51,7 +51,7 @@ function runExtract(projectRoot: string, config: JcConfig): void {
 
 function startWatch(projectRoot: string, config: JcConfig): void {
   // Resolve the component directory from the glob pattern
-  const globBase = config.componentGlob.split('*')[0].replace(/\/$/, '')
+  const globBase = config.componentGlob.split('*')[0].replace(/\/$/, '') || '.'
   const watchDir = resolve(projectRoot, globBase)
 
   if (!existsSync(watchDir)) {

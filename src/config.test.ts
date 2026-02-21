@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultConfig, resolveConfig } from './config.js'
+import { defaultConfig, defineConfig, resolveConfig } from './config.js'
 
 describe('defaultConfig', () => {
   it('has sensible defaults for shadcn/ui', () => {
@@ -84,5 +84,21 @@ describe('resolveConfig', () => {
   it('falls back to default pathAlias', () => {
     const config = resolveConfig({})
     expect(config.pathAlias).toEqual({ '@/': 'src/' })
+  })
+})
+
+describe('defineConfig', () => {
+  it('returns the same config object', () => {
+    const input = { componentGlob: 'lib/**/*.tsx' }
+    expect(defineConfig(input)).toBe(input)
+  })
+
+  it('preserves all provided fields', () => {
+    const input = {
+      componentGlob: 'components/**/*.tsx',
+      outputDir: 'generated',
+      excludeFiles: ['test.tsx'],
+    }
+    expect(defineConfig(input)).toEqual(input)
   })
 })

@@ -12,7 +12,7 @@ function addUseClientDirective(files: string[]) {
         if (!content.startsWith("'use client'")) {
           writeFileSync(path, `'use client';\n${content}`)
         }
-      } catch { /* file may not exist in all builds */ }
+      } catch (err) { console.warn(`[tsup] Failed to add 'use client' to ${file}:`, err) }
     }
   }
 }

@@ -1,10 +1,230 @@
 {
-  "generatedAt": "2026-02-20T23:02:48.788Z",
+  "generatedAt": "2026-02-21T11:19:38.781Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
+      "displayName": "IconButton",
+      "filePath": "src/components/ui/actions/icon-button.tsx",
+      "description": "",
+      "props": {
+        "icon": {
+          "name": "icon",
+          "type": "LucideIcon",
+          "rawType": "LucideIcon",
+          "required": true,
+          "description": "Lucide icon component rendered before the label",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "variant": {
+          "name": "variant",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "primary",
+            "secondary",
+            "outline",
+            "ghost"
+          ],
+          "required": false,
+          "defaultValue": "primary",
+          "description": "Visual style variant",
+          "isChildren": false
+        },
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Button size",
+          "isChildren": false
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the button is disabled",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Badge",
+      "filePath": "src/components/ui/data-display/badge.tsx",
+      "description": "",
+      "props": {
+        "variant": {
+          "name": "variant",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "default",
+            "success",
+            "warning",
+            "error",
+            "info"
+          ],
+          "required": false,
+          "defaultValue": "default",
+          "description": "Badge color variant",
+          "isChildren": false
+        },
+        "pill": {
+          "name": "pill",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Rounded pill shape",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Card",
+      "filePath": "src/components/ui/data-display/card.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Card title displayed in the header",
+          "isChildren": false
+        },
+        "description": {
+          "name": "description",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional description below the title",
+          "isChildren": false
+        },
+        "elevated": {
+          "name": "elevated",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether to add a shadow",
+          "isChildren": false
+        },
+        "padding": {
+          "name": "padding",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Padding size",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "CodeBlock",
+      "filePath": "src/components/ui/data-display/code-block.tsx",
+      "description": "",
+      "props": {
+        "code": {
+          "name": "code",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "The code content to display",
+          "isChildren": false
+        },
+        "inline": {
+          "name": "inline",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether to show a compact inline-style block",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "PropsTable",
+      "filePath": "src/components/ui/data-display/props-table.tsx",
+      "description": "",
+      "props": {
+        "columns": {
+          "name": "columns",
+          "type": "string[]",
+          "rawType": "string[]",
+          "required": true,
+          "description": "Column header labels",
+          "isChildren": false
+        },
+        "rows": {
+          "name": "rows",
+          "type": "string[][]",
+          "rawType": "string[][]",
+          "required": true,
+          "description": "Row data — each row is an array of cell strings matching the columns",
+          "isChildren": false
+        },
+        "monoFirstCol": {
+          "name": "monoFirstCol",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "true",
+          "description": "Whether the first column should be monospace-styled",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
+      "displayName": "Tabs",
+      "filePath": "src/components/ui/data-display/tabs.tsx",
+      "description": "",
+      "props": {
+        "tabs": {
+          "name": "tabs",
+          "type": "{ label: string; content: ReactNode; }[]",
+          "rawType": "{ label: string; content: ReactNode; }[]",
+          "required": true,
+          "description": "Tab definitions — each must have a unique label",
+          "isChildren": false,
+          "componentKind": "node"
+        },
+        "defaultIndex": {
+          "name": "defaultIndex",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "0",
+          "description": "Index of the initially active tab",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false
+    },
+    {
       "displayName": "Alert",
-      "filePath": "src/components/ui/alert.tsx",
+      "filePath": "src/components/ui/feedback/alert.tsx",
       "description": "",
       "props": {
         "title": {
@@ -43,93 +263,8 @@
       "acceptsChildren": true
     },
     {
-      "displayName": "Avatar",
-      "filePath": "src/components/ui/avatar.tsx",
-      "description": "",
-      "props": {
-        "src": {
-          "name": "src",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Image URL",
-          "isChildren": false
-        },
-        "name": {
-          "name": "name",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "",
-          "description": "Alt text / user name (used for initials fallback)",
-          "isChildren": false
-        },
-        "size": {
-          "name": "size",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "sm",
-            "md",
-            "lg"
-          ],
-          "required": false,
-          "defaultValue": "md",
-          "description": "Avatar size",
-          "isChildren": false
-        },
-        "shape": {
-          "name": "shape",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "circle",
-            "square"
-          ],
-          "required": false,
-          "defaultValue": "circle",
-          "description": "Shape variant",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": false
-    },
-    {
-      "displayName": "Badge",
-      "filePath": "src/components/ui/badge.tsx",
-      "description": "",
-      "props": {
-        "variant": {
-          "name": "variant",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "default",
-            "success",
-            "warning",
-            "error",
-            "info"
-          ],
-          "required": false,
-          "defaultValue": "default",
-          "description": "Badge color variant",
-          "isChildren": false
-        },
-        "pill": {
-          "name": "pill",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Rounded pill shape",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
       "displayName": "Button",
-      "filePath": "src/components/ui/button.tsx",
+      "filePath": "src/components/ui/forms/button.tsx",
       "description": "",
       "props": {
         "variant": {
@@ -185,169 +320,8 @@
       "acceptsChildren": true
     },
     {
-      "displayName": "Card",
-      "filePath": "src/components/ui/card.tsx",
-      "description": "",
-      "props": {
-        "title": {
-          "name": "title",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Card title displayed in the header",
-          "isChildren": false
-        },
-        "description": {
-          "name": "description",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Optional description below the title",
-          "isChildren": false
-        },
-        "elevated": {
-          "name": "elevated",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Whether to add a shadow",
-          "isChildren": false
-        },
-        "padding": {
-          "name": "padding",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "none",
-            "sm",
-            "md",
-            "lg"
-          ],
-          "required": false,
-          "defaultValue": "md",
-          "description": "Padding size",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
-      "displayName": "CodeBlock",
-      "filePath": "src/components/ui/code-block.tsx",
-      "description": "",
-      "props": {
-        "code": {
-          "name": "code",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "The code content to display",
-          "isChildren": false
-        },
-        "inline": {
-          "name": "inline",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Whether to show a compact inline-style block",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": false
-    },
-    {
-      "displayName": "FeatureStep",
-      "filePath": "src/components/ui/feature-step.tsx",
-      "description": "",
-      "props": {
-        "step": {
-          "name": "step",
-          "type": "number",
-          "rawType": "number",
-          "required": true,
-          "description": "Step number displayed in the circle",
-          "isChildren": false
-        },
-        "title": {
-          "name": "title",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Step title",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
-      "displayName": "IconButton",
-      "filePath": "src/components/ui/icon-button.tsx",
-      "description": "",
-      "props": {
-        "icon": {
-          "name": "icon",
-          "type": "LucideIcon",
-          "rawType": "LucideIcon",
-          "required": true,
-          "description": "Leading icon displayed before the label",
-          "isChildren": false,
-          "componentKind": "icon"
-        },
-        "trailingIcon": {
-          "name": "trailingIcon",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Optional trailing icon displayed after the label",
-          "isChildren": false,
-          "componentKind": "icon"
-        },
-        "variant": {
-          "name": "variant",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "default",
-            "primary",
-            "secondary",
-            "outline"
-          ],
-          "required": false,
-          "defaultValue": "default",
-          "description": "Visual style variant",
-          "isChildren": false
-        },
-        "size": {
-          "name": "size",
-          "type": "enum",
-          "rawType": "enum",
-          "values": [
-            "sm",
-            "md",
-            "lg"
-          ],
-          "required": false,
-          "defaultValue": "md",
-          "description": "Button size",
-          "isChildren": false
-        },
-        "disabled": {
-          "name": "disabled",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Whether the button is disabled",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
       "displayName": "Input",
-      "filePath": "src/components/ui/input.tsx",
+      "filePath": "src/components/ui/forms/input.tsx",
       "description": "",
       "props": {
         "label": {
@@ -419,65 +393,8 @@
       "acceptsChildren": false
     },
     {
-      "displayName": "PricingCard",
-      "filePath": "src/components/ui/pricing-card.tsx",
-      "description": "",
-      "props": {
-        "title": {
-          "name": "title",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Tier name displayed as the card title",
-          "isChildren": false
-        },
-        "description": {
-          "name": "description",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Short description of the tier",
-          "isChildren": false
-        },
-        "price": {
-          "name": "price",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Price display text (e.g. \"$0\", \"$29/mo\")",
-          "isChildren": false
-        },
-        "priceLabel": {
-          "name": "priceLabel",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Optional label next to the price (e.g. \"still free\", \"/month\")",
-          "isChildren": false
-        },
-        "features": {
-          "name": "features",
-          "type": "string[]",
-          "rawType": "string[]",
-          "required": true,
-          "description": "List of included features, one per line",
-          "isChildren": false
-        },
-        "highlighted": {
-          "name": "highlighted",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Whether this tier is visually highlighted",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
       "displayName": "SectionHeader",
-      "filePath": "src/components/ui/section-header.tsx",
+      "filePath": "src/components/ui/layout/section-header.tsx",
       "description": "",
       "props": {
         "title": {
@@ -485,7 +402,7 @@
           "type": "string",
           "rawType": "string",
           "required": true,
-          "description": "Section title",
+          "description": "The section title",
           "isChildren": false
         },
         "subtitle": {
@@ -493,7 +410,7 @@
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Optional subtitle text displayed below the title",
+          "description": "Optional subtitle displayed below the title",
           "isChildren": false
         },
         "badge": {
@@ -501,7 +418,7 @@
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Optional badge content displayed above the title",
+          "description": "Optional trailing element (e.g. a Badge)",
           "isChildren": false,
           "componentKind": "node"
         },
@@ -522,87 +439,85 @@
       "acceptsChildren": false
     },
     {
-      "displayName": "StatCard",
-      "filePath": "src/components/ui/stat-card.tsx",
+      "displayName": "Steps",
+      "filePath": "src/components/ui/layout/steps.tsx",
+      "description": "Container for a vertical list of numbered steps.",
+      "props": {},
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "Step",
+      "filePath": "src/components/ui/layout/steps.tsx",
       "description": "",
       "props": {
-        "label": {
-          "name": "label",
-          "type": "string",
-          "rawType": "string",
+        "step": {
+          "name": "step",
+          "type": "number",
+          "rawType": "number",
           "required": true,
-          "description": "The metric label",
+          "description": "Step number displayed in the circle",
           "isChildren": false
         },
-        "value": {
-          "name": "value",
+        "title": {
+          "name": "title",
           "type": "string",
           "rawType": "string",
           "required": true,
-          "description": "The metric value",
+          "description": "Step title",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true
+    },
+    {
+      "displayName": "LinkCard",
+      "filePath": "src/components/ui/navigation/link-card.tsx",
+      "description": "",
+      "props": {
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Navigation label (e.g. \"Getting Started\")",
+          "isChildren": false
+        },
+        "description": {
+          "name": "description",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Short description shown below the title",
+          "isChildren": false
+        },
+        "href": {
+          "name": "href",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "URL the card links to",
           "isChildren": false
         },
         "icon": {
           "name": "icon",
-          "type": "LucideIcon",
-          "rawType": "LucideIcon",
-          "required": true,
-          "description": "Icon displayed in the card",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional Lucide icon displayed before the title",
           "isChildren": false,
           "componentKind": "icon"
         },
-        "trend": {
-          "name": "trend",
+        "direction": {
+          "name": "direction",
           "type": "enum",
           "rawType": "enum",
           "values": [
-            "up",
-            "down",
-            "neutral"
+            "forward",
+            "back"
           ],
           "required": false,
-          "defaultValue": "neutral",
-          "description": "Trend direction indicator",
-          "isChildren": false
-        },
-        "trendText": {
-          "name": "trendText",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Trend percentage text (e.g. \"+12%\")",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": false
-    },
-    {
-      "displayName": "TestimonialCard",
-      "filePath": "src/components/ui/testimonial-card.tsx",
-      "description": "",
-      "props": {
-        "quote": {
-          "name": "quote",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "The testimonial quote text",
-          "isChildren": false
-        },
-        "name": {
-          "name": "name",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Author's full name",
-          "isChildren": false
-        },
-        "role": {
-          "name": "role",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Author's role or title",
+          "defaultValue": "forward",
+          "description": "Direction hint that affects the arrow and alignment",
           "isChildren": false
         }
       },
