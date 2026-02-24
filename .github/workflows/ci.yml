@@ -19,7 +19,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun install || (sleep 5 && bun install) || (sleep 10 && bun install)
 
       - name: Type check
         run: bun run type-check
