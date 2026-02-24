@@ -8,6 +8,7 @@
 
 import {
   type ComponentType,
+  act,
   cloneElement,
   createElement,
   forwardRef,
@@ -17,7 +18,6 @@ import {
 } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot } from 'react-dom/client'
-import { act } from 'react-dom/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { JcMeta, JcResolvedFixture } from '../types.js'
 import {

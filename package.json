@@ -52,6 +52,7 @@
     "@biomejs/biome": "^2.4.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^28.1.0",
     "react-docgen-typescript": "^2.4.0",
