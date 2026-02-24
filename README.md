@@ -4,8 +4,34 @@ A zero-config component showcase for React. Auto-discovers your components from 
 
 ## Quick Start
 
+### Install from Git
+
+This package is not yet published to npm. Install directly from GitHub:
+
 ```bash
-bun add jc           # install
+# bun
+bun add github:mde-pach/jc
+
+# npm
+npm install github:mde-pach/jc
+
+# pnpm
+pnpm add github:mde-pach/jc
+
+# yarn
+yarn add mde-pach/jc
+```
+
+To pin a specific commit or branch:
+
+```bash
+bun add github:mde-pach/jc#main          # branch
+bun add github:mde-pach/jc#abc1234       # commit hash
+```
+
+Then extract component metadata:
+
+```bash
 npx jc extract       # scan components, generate metadata
 ```
 
@@ -53,7 +79,7 @@ Visit `/showcase` for the interactive playground.
 
 ```bash
 bun install           # install dependencies
-bun run test          # run tests (93 tests)
+bun run test          # run tests (316 tests)
 bun run type-check    # TypeScript validation
 bun run build         # production build
 bun run dev           # watch mode

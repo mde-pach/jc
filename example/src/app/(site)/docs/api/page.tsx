@@ -1,142 +1,116 @@
 import { CodeBlock } from '@/components/ui/data-display/code-block'
-import { PropsTable } from '@/components/ui/data-display/props-table'
-import { LinkCard } from '@/components/ui/navigation/link-card'
-import { Puzzle, Monitor } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-display/data-table'
+import { Callout } from '@/components/ui/feedback/callout'
 
 export default function ApiPage() {
   return (
     <article>
-      <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">API Reference</h1>
-      <p className="text-gray-500 text-lg mb-12 leading-relaxed">
-        Complete reference for all exports, types, and component props.
+      <h1 className="text-3xl font-extrabold tracking-tight text-fg mb-2">API Reference</h1>
+      <p className="text-fg-muted text-lg mb-12 leading-relaxed">
+        Exports, component props, and type definitions.
       </p>
 
-      <Section title='Exports from "jc"'>
-        <PropsTable
-          columns={['Export', 'Kind', 'Description']}
+      <Section title="Package exports">
+        <DataTable
+          columns={['Import Path', 'Export', 'Description']}
           rows={[
-            ['ShowcaseApp', 'Component', 'Root showcase UI — sidebar, controls, preview, code'],
-            ['defineFixtures(plugin)', 'Function', 'Type-safe helper for creating fixture plugins'],
-            ['JcMeta', 'Type', 'Full extraction output shape'],
-            ['JcComponentMeta', 'Type', 'Single component metadata'],
-            ['JcPropMeta', 'Type', 'Single prop metadata'],
-            ['JcConfig', 'Type', 'Configuration shape'],
-            ['JcFixture', 'Type', 'One fixture item'],
-            ['JcFixturePlugin', 'Type', 'A named set of fixtures'],
-            ['JcControl', 'Type', 'Resolved control definition'],
-            ['JcControlType', 'Type', 'Control type union: text, number, boolean, select, component, json, readonly'],
-            ['JcComponentPropKind', 'Type', 'Component prop kind: icon, node, element'],
+            ['jc', 'ShowcaseApp', 'Main showcase UI component'],
+            ['jc', 'defineFixtures', 'Fixture plugin factory function'],
+            ['jc', 'JcMeta', 'TypeScript type for meta.json shape'],
+            ['jc', 'FixturePlugin', 'TypeScript type for fixture plugins'],
+            ['jc/config', 'defineConfig', 'Config factory with autocomplete'],
+            ['jc/config', 'resolveConfig', 'Merges user config with defaults'],
+            ['jc/config', 'defaultConfig', 'Default configuration object'],
+            ['jc/next', 'createShowcasePage', 'Next.js App Router page factory'],
           ]}
-        />
-      </Section>
-
-      <Section title='Exports from "jc/config"'>
-        <PropsTable
-          columns={['Export', 'Kind', 'Description']}
-          rows={[
-            ['defineConfig(config)', 'Function', 'Type-safe helper for jc.config.ts'],
-            ['resolveConfig(config)', 'Function', 'Merges user config with defaults (union merge)'],
-            ['defaultConfig', 'Object', 'Built-in default values'],
-          ]}
-        />
-      </Section>
-
-      <Section title='Exports from "jc/next"'>
-        <PropsTable
-          columns={['Export', 'Kind', 'Description']}
-          rows={[
-            ['createShowcasePage(options)', 'Function', 'Creates a client component for Next.js App Router pages'],
-          ]}
+          monoFirstCol
+          striped
         />
       </Section>
 
       <Section title="ShowcaseApp props">
-        <PropsTable
+        <DataTable
           columns={['Prop', 'Type', 'Required', 'Description']}
           rows={[
-            ['meta', 'JcMeta', 'Yes', 'Component metadata from meta.json'],
-            ['registry', 'Record<string, () => Promise<ComponentType>>', 'Yes', 'Lazy loaders from registry.ts'],
-            ['fixtures', 'JcFixturePlugin[]', 'No', 'Fixture plugins for component-type props'],
-            ['wrapper', 'ComponentType<{ children: ReactNode }>', 'No', 'Wrapper for context providers'],
+            ['meta', 'JcMeta', 'Yes', 'Extracted component metadata from meta.json'],
+            ['registry', 'Record<string, () => Promise<...>>', 'Yes', 'Lazy component import map from registry.ts'],
+            ['fixtures', 'FixturePlugin[]', 'No', 'Array of fixture plugins for component-type props'],
+            ['defaultTheme', "'auto' | 'light' | 'dark'", 'No', 'Initial theme (default: auto)'],
+            ['defaultViewport', "'full' | '375' | '768' | '1280'", 'No', 'Initial viewport width (default: full)'],
           ]}
+          monoFirstCol
+          striped
         />
       </Section>
 
-      <Section title="Wrapper pattern">
-        <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-          Use the <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">wrapper</code> prop to inject context
-          providers that your components need:
+      <Section title="Wrapper detection">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          Some components must render inside a parent — like AccordionItem inside Accordion.
+          jc detects this from <CodeBlock code="@example" inline /> JSDoc tags on the component:
         </p>
         <CodeBlock
-          code={`<ShowcaseApp
-  meta={meta}
-  registry={registry}
-  wrapper={({ children }) => (
-    <ThemeProvider>
-      <TooltipProvider>
-        {children}
-      </TooltipProvider>
-    </ThemeProvider>
-  )}
-/>`}
+          language="tsx"
+          code={`/**
+ * A single item within an Accordion.
+ *
+ * @example
+ * <Accordion type="single" collapsible>
+ *   <AccordionItem value="1" title="Title">Content</AccordionItem>
+ * </Accordion>
+ */
+export function AccordionItem({ ... }: AccordionItemProps) { ... }`}
         />
+        <p className="text-sm text-fg-muted mt-4 leading-relaxed">
+          When the example JSX wraps the component in a parent element, jc extracts the wrapper
+          component name and its props. The showcase renders the wrapper automatically around the
+          preview.
+        </p>
+        <div className="mt-4">
+          <Callout intent="info" title="Multiple examples">
+            A component can have multiple <CodeBlock code="@example" inline /> tags. Each becomes a
+            selectable preset in the showcase UI.
+          </Callout>
+        </div>
       </Section>
 
-      <Section title="Key types">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">JcMeta</h3>
+      <Section title="Type definitions">
         <CodeBlock
+          language="ts"
           code={`interface JcMeta {
-  generatedAt: string
-  components: JcComponentMeta[]
-}`}
-        />
+  components: ComponentMeta[]
+}
 
-        <h3 className="text-base font-semibold text-gray-900 mb-3 mt-8">JcComponentMeta</h3>
-        <CodeBlock
-          code={`interface JcComponentMeta {
+interface ComponentMeta {
   displayName: string
   filePath: string
-  props: JcPropMeta[]
-}`}
-        />
+  description?: string
+  props: PropMeta[]
+  examples?: Example[]
+  wrapperComponents?: WrapperComponent[]
+}
 
-        <h3 className="text-base font-semibold text-gray-900 mb-3 mt-8">JcPropMeta</h3>
-        <CodeBlock
-          code={`interface JcPropMeta {
+interface PropMeta {
   name: string
   type: string
   required: boolean
-  defaultValue: string | null
-  description: string
-  enumValues: string[] | null
-  componentKind: JcComponentPropKind | null
-}`}
-        />
+  defaultValue?: string
+  description?: string
+  enumValues?: string[]
+  kind?: 'text' | 'icon' | 'element' | 'node'
+}
 
-        <h3 className="text-base font-semibold text-gray-900 mb-3 mt-8">JcFixturePlugin</h3>
-        <CodeBlock
-          code={`interface JcFixturePlugin {
+interface Example {
+  name?: string
+  props: Record<string, unknown>
+  wrapperProps?: Record<string, unknown>
+}
+
+interface WrapperComponent {
   name: string
-  fixtures: JcFixture[]
+  props: Record<string, unknown>
 }`}
         />
       </Section>
-
-      <div className="mt-14 flex gap-3">
-        <LinkCard
-          href="/docs/fixtures"
-          title="Fixtures"
-          icon={Puzzle}
-          direction="back"
-        />
-        <LinkCard
-          href="/docs/frameworks"
-          title="Frameworks"
-          description="Next.js, Vite, and other setups"
-          icon={Monitor}
-          direction="forward"
-        />
-      </div>
     </article>
   )
 }
@@ -144,7 +118,7 @@ export default function ApiPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-12">
-      <h2 className="text-xl font-bold text-gray-900 mb-5">{title}</h2>
+      <h2 className="text-xl font-bold text-fg mb-5">{title}</h2>
       {children}
     </section>
   )

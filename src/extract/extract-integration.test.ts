@@ -97,4 +97,32 @@ describe('extract (integration)', () => {
     expect(button.props.variant.description).toBe('The visual style variant')
     expect(button.props.disabled.description).toBe('Whether the button is disabled')
   })
+
+  it('extracts JSDoc @example tags from component function', () => {
+    const meta = extract(projectRoot, config)
+    const item = meta.components.find((c) => c.displayName === 'AccordionItem')
+    expect(item).toBeDefined()
+    expect(item!.tags).toBeDefined()
+    expect(item!.tags!.example).toHaveLength(2)
+    expect(item!.tags!.example[0]).toContain('Accordion')
+  })
+
+  it('detects wrapperComponents from consistent @example blocks', () => {
+    const meta = extract(projectRoot, config)
+    const item = meta.components.find((c) => c.displayName === 'AccordionItem')
+    expect(item).toBeDefined()
+    expect(item!.wrapperComponents).toBeDefined()
+    expect(item!.wrapperComponents).toHaveLength(1)
+    expect(item!.wrapperComponents![0].displayName).toBe('Accordion')
+    expect(item!.wrapperComponents![0].defaultProps).toHaveProperty('type', 'single')
+    expect(item!.wrapperComponents![0].defaultProps).toHaveProperty('collapsible', 'true')
+  })
+
+  it('does not set wrapperComponents for standalone components', () => {
+    const meta = extract(projectRoot, config)
+    const btn = meta.components.find((c) => c.displayName === 'StandaloneButton')
+    expect(btn).toBeDefined()
+    expect(btn!.tags?.example).toHaveLength(1)
+    expect(btn!.wrapperComponents).toBeUndefined()
+  })
 })

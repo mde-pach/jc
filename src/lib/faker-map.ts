@@ -6,6 +6,61 @@ import { faker } from '@faker-js/faker'
 import type { JcComponentMeta, JcControlType, JcPropMeta, JcResolvedFixture } from '../types.js'
 import { getDefaultFixtureKey } from './fixtures.js'
 
+// ── Structured field types ───────────────────────────────────
+
+/** A single field inside a structured object type like `{ label: string; icon: LucideIcon }` */
+export interface StructuredField {
+  name: string
+  type: string
+  optional: boolean
+  /** True when the field type is a component/icon (ReactNode, LucideIcon, etc.) */
+  isComponent: boolean
+  /** Component sub-kind: 'icon' if the type looks icon-like, 'node' for ReactNode/Element */
+  componentKind?: 'icon' | 'node'
+}
+
+/**
+ * Parse a structured object type string into an array of field definitions.
+ * Input: `{ label: string; content: ReactNode; icon?: LucideIcon }`
+ * Returns null for non-object or malformed types.
+ */
+export function parseStructuredFields(typeStr: string): StructuredField[] | null {
+  // Strip outer braces
+  const trimmed = typeStr.trim()
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null
+  const inner = trimmed.slice(1, -1).trim()
+  if (!inner) return null
+
+  const fields: StructuredField[] = []
+  // Split on semicolons, filter empty parts
+  const parts = inner.split(';').filter((p) => p.trim())
+
+  for (const part of parts) {
+    // Match `name?: type` or `name: type`
+    const match = part.trim().match(/^(\w+)(\?)?:\s*(.+)$/)
+    if (!match) return null // malformed → bail
+
+    const [, name, optionalMark, rawType] = match
+    const type = rawType.trim()
+    const optional = optionalMark === '?'
+
+    // Detect component types
+    const isIconType = /Icon|Component/.test(type) && !/string|number|boolean/.test(type)
+    const isNodeType = /ReactNode|ReactElement|JSX\.Element|Element/.test(type)
+    const isComponent = isIconType || isNodeType
+
+    fields.push({
+      name,
+      type,
+      optional,
+      isComponent,
+      ...(isComponent ? { componentKind: isIconType ? ('icon' as const) : ('node' as const) } : {}),
+    })
+  }
+
+  return fields.length > 0 ? fields : null
+}
+
 /** Determine the control type for a prop */
 export function resolveControlType(prop: JcPropMeta): JcControlType {
   // Component-type props get a dedicated control
@@ -14,7 +69,16 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
   if (prop.values && prop.values.length > 0) return 'select'
   if (prop.type === 'boolean') return 'boolean'
   if (prop.type === 'number') return 'number'
-  if (/ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type)) return 'component'
+  // Standalone ReactNode/Element props are component slots, but structured
+  // objects containing ReactNode (e.g. `{ label: string; content: ReactNode }[]`)
+  // are data — they should use json/array controls, not the component picker.
+  if (
+    /ReactNode|ReactElement|JSX\.Element|Element/.test(prop.type) &&
+    !prop.type.startsWith('{') &&
+    !prop.type.startsWith('Array<{') &&
+    !/^\{[^}]*\}\[\]$/.test(prop.type)
+  )
+    return 'component'
   if (prop.type.includes('=>') || prop.type.includes('Function')) return 'readonly'
 
   // Any T[] type gets the generic array control
@@ -36,16 +100,25 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
 export function getArrayItemType(prop: JcPropMeta): {
   itemType: string
   isComponent: boolean
+  structuredFields?: StructuredField[]
 } | null {
   if (!prop.type.endsWith('[]')) return null
   const itemType = prop.type.slice(0, -2)
 
   // Check if the item type is a component (icon, element, etc.)
+  // Structured object types (e.g. `{ label: string; content: ReactNode }`) are data, not components
+  const isStructuredObject = itemType.startsWith('{') || itemType.startsWith('Array<{')
   const isComponent =
-    /ReactNode|ReactElement|JSX\.Element|Element/.test(itemType) ||
-    !!(prop.rawType && /Icon|Component|Element/.test(prop.rawType))
+    !isStructuredObject &&
+    (/ReactNode|ReactElement|JSX\.Element|Element/.test(itemType) ||
+      !!(prop.rawType && /Icon|Component|Element/.test(prop.rawType)))
 
-  return { itemType, isComponent }
+  // Parse structured object fields when the item type is an object literal
+  const structuredFields = isStructuredObject
+    ? (parseStructuredFields(itemType) ?? undefined)
+    : undefined
+
+  return { itemType, isComponent, structuredFields }
 }
 
 /** Generate a smart default value for a prop based on name + type heuristics */
@@ -89,6 +162,30 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
 
     // Component arrays start empty — user adds via picker
     if (info.isComponent) return []
+
+    // Structured object arrays → generate per-field defaults
+    if (info.structuredFields) {
+      const makeItem = () => {
+        const obj: Record<string, unknown> = {}
+        for (const field of info.structuredFields!) {
+          if (field.isComponent) {
+            obj[field.name] = undefined // resolved via fixture system
+          } else {
+            // Build a synthetic JcPropMeta for recursive faker resolution
+            const synth: JcPropMeta = {
+              name: field.name,
+              type: field.type,
+              required: !field.optional,
+              description: '',
+              isChildren: false,
+            }
+            obj[field.name] = generateFakeValue(field.name, synth)
+          }
+        }
+        return obj
+      }
+      return prop.required ? [makeItem(), makeItem()] : []
+    }
 
     if (info.itemType === 'string') {
       if (name.includes('feature') || name.includes('benefit')) {
@@ -156,6 +253,56 @@ export function generateFakeChildren(componentName: string): string {
 }
 
 /**
+ * Generate multiple varied instances of a component for overflow/truncation testing.
+ *
+ * - Instance 0 is always the exact user values (identity).
+ * - Instance 1+ uses a seeded faker to generate varied text while preserving
+ *   non-string edits (booleans, numbers, selects).
+ * - The faker seed is restored afterwards.
+ */
+export function generateVariedInstances(
+  comp: JcComponentMeta,
+  fixtures: JcResolvedFixture[],
+  userProps: Record<string, unknown>,
+  userChildren: string,
+  count: number,
+): Array<{ propValues: Record<string, unknown>; childrenText: string }> {
+  if (count <= 1) return [{ propValues: userProps, childrenText: userChildren }]
+
+  const instances: Array<{ propValues: Record<string, unknown>; childrenText: string }> = []
+  // Instance 0: exact user values
+  instances.push({ propValues: userProps, childrenText: userChildren })
+
+  // Simple stable hash from component name
+  const hash = comp.displayName.split('').reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 0)
+
+  for (let i = 1; i < count; i++) {
+    faker.seed(Math.abs(hash + i * 7919))
+    const varied = generateDefaults(comp, fixtures)
+
+    // Overlay: preserve non-string user edits (booleans, numbers, selects, fixtures)
+    for (const [key, userVal] of Object.entries(userProps)) {
+      if (userVal === undefined) continue
+      if (typeof userVal !== 'string') {
+        varied[key] = userVal
+      }
+      // For select props, preserve the user's selection
+      const propMeta = comp.props[key]
+      if (propMeta?.values && propMeta.values.length > 0) {
+        varied[key] = userVal
+      }
+    }
+
+    const variedChildren = comp.acceptsChildren ? generateFakeChildren(comp.displayName) : ''
+    instances.push({ propValues: varied, childrenText: variedChildren })
+  }
+
+  // Restore unseeded faker state
+  faker.seed()
+  return instances
+}
+
+/**
  * Generate smart default prop values for a component.
  * Uses faker heuristics for primitive props; for component-type props,
  * picks the first matching fixture key if fixtures are available.
@@ -168,7 +315,13 @@ export function generateDefaults(
   for (const [name, prop] of Object.entries(comp.props)) {
     const base = generateFakeValue(name, prop)
     if (base === undefined && prop.componentKind && fixtures.length > 0 && prop.required) {
-      values[name] = getDefaultFixtureKey(fixtures, prop.componentKind)
+      if (prop.componentKind === 'icon') {
+        // Icon props → pick first matching fixture
+        values[name] = getDefaultFixtureKey(fixtures, prop.componentKind)
+      } else {
+        // Node/element props → default to text (consistent with text/fixture toggle)
+        values[name] = generateFakeChildren(comp.displayName)
+      }
     } else {
       values[name] = base
     }

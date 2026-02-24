@@ -20,6 +20,11 @@ import {
   TrendingUp,
   BarChart3,
   Users,
+  Terminal,
+  Code2,
+  Package,
+  Rocket,
+  Sparkles,
 } from 'lucide-react'
 import { createElement } from 'react'
 
@@ -54,5 +59,10 @@ export const lucideFixtures = defineFixtures({
     { key: 'trending-up', label: 'TrendingUp', category: 'icons', ...icon(TrendingUp) },
     { key: 'bar-chart', label: 'BarChart3', category: 'icons', ...icon(BarChart3) },
     { key: 'users', label: 'Users', category: 'icons', ...icon(Users) },
+    { key: 'terminal', label: 'Terminal', category: 'icons', ...icon(Terminal) },
+    { key: 'code', label: 'Code2', category: 'icons', ...icon(Code2) },
+    { key: 'package', label: 'Package', category: 'icons', ...icon(Package) },
+    { key: 'rocket', label: 'Rocket', category: 'icons', ...icon(Rocket) },
+    { key: 'sparkles', label: 'Sparkles', category: 'icons', ...icon(Sparkles) },
   ],
 })

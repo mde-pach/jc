@@ -223,6 +223,12 @@ describe('detectComponentKind', () => {
     expect(detectComponentKind('label', 'ReactNode')).toBe('node')
   })
 
+  it('returns undefined for structured object types containing ReactNode', () => {
+    expect(detectComponentKind('tabs', '{ label: string; content: ReactNode; }[]')).toBeUndefined()
+    expect(detectComponentKind('items', '{ title: string; icon: ReactElement; }[]')).toBeUndefined()
+    expect(detectComponentKind('badge', '{ label: string; content: ReactNode; }')).toBeUndefined()
+  })
+
   it('returns undefined for unknown props', () => {
     expect(detectComponentKind('title', 'string')).toBeUndefined()
     expect(detectComponentKind('onClick', '() => void')).toBeUndefined()

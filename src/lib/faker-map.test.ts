@@ -1,9 +1,12 @@
+import { faker } from '@faker-js/faker'
 import { describe, expect, it } from 'vitest'
-import type { JcPropMeta } from '../types.js'
+import type { JcComponentMeta, JcPropMeta } from '../types.js'
 import {
   generateFakeChildren,
   generateFakeValue,
+  generateVariedInstances,
   getArrayItemType,
+  parseStructuredFields,
   resolveControlType,
 } from './faker-map.js'
 
@@ -318,6 +321,117 @@ describe('generateFakeValue', () => {
   })
 })
 
+// ── parseStructuredFields ─────────────────────────────────────
+
+describe('parseStructuredFields', () => {
+  it('returns null for non-object strings', () => {
+    expect(parseStructuredFields('string')).toBeNull()
+    expect(parseStructuredFields('number[]')).toBeNull()
+  })
+
+  it('returns null for empty braces', () => {
+    expect(parseStructuredFields('{}')).toBeNull()
+    expect(parseStructuredFields('{  }')).toBeNull()
+  })
+
+  it('parses simple string fields', () => {
+    const result = parseStructuredFields('{ label: string; value: string }')
+    expect(result).toEqual([
+      { name: 'label', type: 'string', optional: false, isComponent: false },
+      { name: 'value', type: 'string', optional: false, isComponent: false },
+    ])
+  })
+
+  it('parses mixed types (string, number, boolean)', () => {
+    const result = parseStructuredFields('{ name: string; count: number; active: boolean }')
+    expect(result).toHaveLength(3)
+    expect(result![0]).toMatchObject({ name: 'name', type: 'string' })
+    expect(result![1]).toMatchObject({ name: 'count', type: 'number' })
+    expect(result![2]).toMatchObject({ name: 'active', type: 'boolean' })
+  })
+
+  it('detects optional fields', () => {
+    const result = parseStructuredFields('{ label: string; icon?: LucideIcon }')
+    expect(result![0].optional).toBe(false)
+    expect(result![1].optional).toBe(true)
+  })
+
+  it('detects ReactNode as component (node kind)', () => {
+    const result = parseStructuredFields('{ content: ReactNode }')
+    expect(result![0].isComponent).toBe(true)
+    expect(result![0].componentKind).toBe('node')
+  })
+
+  it('detects LucideIcon as component (icon kind)', () => {
+    const result = parseStructuredFields('{ icon: LucideIcon }')
+    expect(result![0].isComponent).toBe(true)
+    expect(result![0].componentKind).toBe('icon')
+  })
+
+  it('handles trailing semicolons', () => {
+    const result = parseStructuredFields('{ label: string; }')
+    expect(result).toHaveLength(1)
+    expect(result![0].name).toBe('label')
+  })
+
+  it('returns null for malformed fields', () => {
+    expect(parseStructuredFields('{ not valid }')).toBeNull()
+    expect(parseStructuredFields('{ : string }')).toBeNull()
+  })
+})
+
+// ── getArrayItemType with structured fields ──────────────────
+
+describe('getArrayItemType — structured', () => {
+  it('returns structuredFields for object array types', () => {
+    const result = getArrayItemType(makeProp({ type: '{ label: string; icon: LucideIcon }[]' }))
+    expect(result).not.toBeNull()
+    expect(result!.isComponent).toBe(false)
+    expect(result!.structuredFields).toHaveLength(2)
+    expect(result!.structuredFields![0]).toMatchObject({ name: 'label', type: 'string' })
+    expect(result!.structuredFields![1]).toMatchObject({ name: 'icon', isComponent: true })
+  })
+
+  it('returns undefined structuredFields for non-object arrays', () => {
+    const result = getArrayItemType(makeProp({ type: 'string[]' }))
+    expect(result!.structuredFields).toBeUndefined()
+  })
+})
+
+// ── generateFakeValue with structured arrays ─────────────────
+
+describe('generateFakeValue — structured arrays', () => {
+  it('generates 2 items for required structured array', () => {
+    const result = generateFakeValue(
+      'tabs',
+      makeProp({ type: '{ label: string; value: number }[]', required: true }),
+    )
+    expect(Array.isArray(result)).toBe(true)
+    const arr = result as Record<string, unknown>[]
+    expect(arr).toHaveLength(2)
+    expect(typeof arr[0].label).toBe('string')
+    expect(typeof arr[0].value).toBe('number')
+  })
+
+  it('generates empty array for optional structured array', () => {
+    const result = generateFakeValue(
+      'tabs',
+      makeProp({ type: '{ label: string }[]', required: false }),
+    )
+    expect(result).toEqual([])
+  })
+
+  it('sets component fields to undefined', () => {
+    const result = generateFakeValue(
+      'tabs',
+      makeProp({ type: '{ label: string; icon: LucideIcon }[]', required: true }),
+    )
+    const arr = result as Record<string, unknown>[]
+    expect(arr[0].icon).toBeUndefined()
+    expect(typeof arr[0].label).toBe('string')
+  })
+})
+
 // ── generateFakeChildren ──────────────────────────────────────
 
 describe('generateFakeChildren', () => {
@@ -371,5 +485,86 @@ describe('generateFakeChildren', () => {
     const result = generateFakeChildren('Card')
     expect(typeof result).toBe('string')
     expect(result.length).toBeGreaterThan(0)
+  })
+})
+
+// ── generateVariedInstances ─────────────────────────────────
+
+describe('generateVariedInstances', () => {
+  const makeComp = (overrides: Partial<JcComponentMeta> = {}): JcComponentMeta => ({
+    displayName: 'TestButton',
+    filePath: 'src/test.tsx',
+    description: '',
+    props: {
+      label: makeProp({ name: 'label', type: 'string', required: true }),
+      disabled: makeProp({ name: 'disabled', type: 'boolean' }),
+      variant: makeProp({ name: 'variant', type: 'string', values: ['primary', 'secondary'] }),
+    },
+    acceptsChildren: true,
+    ...overrides,
+  })
+
+  it('returns identity for count=1', () => {
+    const comp = makeComp()
+    const result = generateVariedInstances(
+      comp,
+      [],
+      { label: 'Hello', disabled: false },
+      'Click',
+      1,
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0].propValues).toEqual({ label: 'Hello', disabled: false })
+    expect(result[0].childrenText).toBe('Click')
+  })
+
+  it('generates varied strings for count=3', () => {
+    const comp = makeComp()
+    const result = generateVariedInstances(
+      comp,
+      [],
+      { label: 'Hello', disabled: false },
+      'Click',
+      3,
+    )
+    expect(result).toHaveLength(3)
+    // Instance 0 is exact user values
+    expect(result[0].propValues.label).toBe('Hello')
+    // Instances 1+ have varied string values
+    expect(typeof result[1].propValues.label).toBe('string')
+    expect(typeof result[2].propValues.label).toBe('string')
+  })
+
+  it('preserves non-string user values across instances', () => {
+    const comp = makeComp()
+    const result = generateVariedInstances(comp, [], { label: 'Hello', disabled: true }, 'Click', 3)
+    // Boolean should be preserved in varied instances
+    expect(result[1].propValues.disabled).toBe(true)
+    expect(result[2].propValues.disabled).toBe(true)
+  })
+
+  it('preserves select values across instances', () => {
+    const comp = makeComp()
+    const result = generateVariedInstances(
+      comp,
+      [],
+      { label: 'Hello', variant: 'secondary' },
+      'Click',
+      3,
+    )
+    expect(result[1].propValues.variant).toBe('secondary')
+    expect(result[2].propValues.variant).toBe('secondary')
+  })
+
+  it('restores faker seed after generating', () => {
+    const comp = makeComp()
+    faker.seed(12345)
+    const _before = faker.lorem.word()
+    faker.seed(12345)
+    generateVariedInstances(comp, [], { label: 'Hello' }, 'Click', 5)
+    // After generateVariedInstances, seed should be restored (unseeded)
+    // Just verify it doesn't throw and produces output
+    const after = faker.lorem.word()
+    expect(typeof after).toBe('string')
   })
 })

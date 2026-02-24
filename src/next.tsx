@@ -36,11 +36,16 @@ interface CreateShowcasePageOptions {
   /** Component metadata from meta.json (cast as JcMeta) */
   meta: JcMeta
   /** Lazy component loaders from registry.ts */
+  // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
   registry: Record<string, () => Promise<ComponentType<any>>>
   /** Optional fixture plugins */
   fixtures?: JcFixturePlugin[]
   /** Optional wrapper for context providers */
   wrapper?: ComponentType<{ children: ReactNode }>
+  /** Select a specific component on mount */
+  initialComponent?: string
+  /** When false, disables URL sync (default true) */
+  syncUrl?: boolean
 }
 
 /**
@@ -55,10 +60,19 @@ interface CreateShowcasePageOptions {
  * export default createShowcasePage({ meta, registry })
  */
 export function createShowcasePage(options: CreateShowcasePageOptions) {
-  const { meta, registry, fixtures, wrapper } = options
+  const { meta, registry, fixtures, wrapper, initialComponent, syncUrl } = options
 
   function JcShowcasePage() {
-    return <ShowcaseApp meta={meta} registry={registry} fixtures={fixtures} wrapper={wrapper} />
+    return (
+      <ShowcaseApp
+        meta={meta}
+        registry={registry}
+        fixtures={fixtures}
+        wrapper={wrapper}
+        initialComponent={initialComponent}
+        syncUrl={syncUrl}
+      />
+    )
   }
   JcShowcasePage.displayName = 'JcShowcasePage'
 

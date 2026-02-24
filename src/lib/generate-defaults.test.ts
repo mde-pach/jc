@@ -193,7 +193,7 @@ describe('generateDefaults', () => {
     expect(result.icon).toBeUndefined()
   })
 
-  it('falls back to all fixtures when kind has no category match (required prop)', () => {
+  it('defaults required node-kind props to text, not fixture', () => {
     const comp = makeComponent({
       props: {
         content: {
@@ -207,8 +207,11 @@ describe('generateDefaults', () => {
       },
     })
     const result = generateDefaults(comp, fixtures)
-    // 'node' kind has no exact category match, falls back to first fixture
-    expect(result.content).toBe('lucide/star')
+    // Node-kind props default to generated text, not a fixture key
+    expect(typeof result.content).toBe('string')
+    expect((result.content as string).length).toBeGreaterThan(0)
+    // Must NOT be a fixture key
+    expect(fixtures.some((f) => f.qualifiedKey === result.content)).toBe(false)
   })
 
   it('leaves optional component-kind props unselected even with fixtures', () => {

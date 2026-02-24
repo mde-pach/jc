@@ -1,142 +1,109 @@
 import { CodeBlock } from '@/components/ui/data-display/code-block'
-import { PropsTable } from '@/components/ui/data-display/props-table'
-import { Alert } from '@/components/ui/feedback/alert'
-import { LinkCard } from '@/components/ui/navigation/link-card'
-import { Settings, FileCode } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-display/data-table'
+import { Callout } from '@/components/ui/feedback/callout'
 
 export default function FixturesPage() {
   return (
     <article>
-      <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">Fixtures</h1>
-      <p className="text-gray-500 text-lg mb-12 leading-relaxed">
-        Fixture plugins let you provide real components for component-type props — icons, badges, or
-        any custom element — so the showcase renders actual UI instead of placeholder text.
+      <h1 className="text-3xl font-extrabold tracking-tight text-fg mb-2">Fixtures</h1>
+      <p className="text-fg-muted text-lg mb-12 leading-relaxed">
+        Provide concrete values for component-type props — icons, badges, or any React element.
       </p>
 
-      <Section title="Why fixtures?">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          By default, component-type props (like{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">LucideIcon</code> or{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">ReactNode</code>) show a plain
-          text input. Fixture plugins replace that with a visual picker — click to choose a real icon,
-          badge, or any custom element.
+      <Section title="What are fixtures">
+        <p className="text-sm text-fg-muted leading-relaxed">
+          Some props accept React components rather than primitive values. A prop typed as{' '}
+          <CodeBlock code="icon?: LucideIcon" inline /> can&#39;t be controlled with a text input.
+          Fixtures give jc a set of named values to offer in a visual picker.
         </p>
       </Section>
 
-      <Section title="Defining fixtures">
+      <Section title="Create a fixture plugin">
         <CodeBlock
+          language="tsx"
           code={`import { defineFixtures } from 'jc'
-import { Star, Heart, Zap, Bell, Search } from 'lucide-react'
+import { Star, Heart, Zap, Download, Trash2 } from 'lucide-react'
 import { createElement } from 'react'
+
+function icon(Comp: typeof Star, size = 20) {
+  return {
+    render: () => createElement(Comp, { size }),
+    renderIcon: () => createElement(Comp, { size: 14 }),
+    component: Comp,
+  }
+}
 
 export const lucideFixtures = defineFixtures({
   name: 'lucide',
   fixtures: [
-    {
-      key: 'star',
-      label: 'Star',
-      category: 'icons',
-      render: () => createElement(Star, { size: 20 }),
-      renderIcon: () => createElement(Star, { size: 14 }),
-    },
-    {
-      key: 'heart',
-      label: 'Heart',
-      category: 'icons',
-      render: () => createElement(Heart, { size: 20 }),
-      renderIcon: () => createElement(Heart, { size: 14 }),
-    },
-    // ... more icons
+    { key: 'star', label: 'Star', category: 'icons', ...icon(Star) },
+    { key: 'heart', label: 'Heart', category: 'icons', ...icon(Heart) },
+    { key: 'zap', label: 'Zap', category: 'icons', ...icon(Zap) },
+    { key: 'download', label: 'Download', category: 'icons', ...icon(Download) },
+    { key: 'trash', label: 'Trash', category: 'icons', ...icon(Trash2) },
   ],
 })`}
         />
       </Section>
 
-      <Section title="Fixture fields">
-        <PropsTable
-          columns={['Field', 'Type', 'Required', 'Description']}
+      <Section title="Fields reference">
+        <DataTable
+          columns={['Field', 'Type', 'Description']}
           rows={[
-            ['key', 'string', 'Yes', 'Unique identifier within the plugin'],
-            ['label', 'string', 'Yes', 'Display name (shown as PascalCase in code preview)'],
-            ['category', 'string', 'No', 'Filters fixtures by componentKind (e.g. "icons" → "icon")'],
-            ['render()', '() => ReactNode', 'Yes', 'Full-size element for the preview'],
-            ['renderIcon()', '() => ReactNode', 'No', 'Small version (14px) for the picker grid'],
-            ['component', 'ComponentType', 'No', 'Raw component reference for code generation'],
+            ['key', 'string', 'Unique identifier within the plugin'],
+            ['label', 'string', 'Display name shown in the picker UI'],
+            ['category', 'string', 'Group label — determines which prop kinds use this fixture'],
+            ['render', '() => ReactNode', 'Full-size preview rendered in the picker grid'],
+            ['renderIcon', '() => ReactNode', 'Compact preview for the selected-value thumbnail'],
+            ['component', 'ComponentType', 'The actual value passed as the prop at runtime'],
           ]}
+          monoFirstCol
+          striped
         />
       </Section>
 
-      <Section title="Qualified keys">
-        <p className="text-sm text-gray-600 leading-relaxed mb-4">
-          Each fixture gets a <strong>qualified key</strong> in the format{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">pluginName/key</code> (e.g.{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">lucide/star</code>). This is
-          used as the internal prop value. At render time, qualified keys are resolved to real
-          ReactNodes via <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">render()</code>.
+      <Section title="How matching works">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          jc detects the kind of each prop from its TypeScript type. A prop typed as{' '}
+          <CodeBlock code="LucideIcon" inline /> gets <CodeBlock code='kind: "icon"' inline />.
+          The showcase then looks for fixtures in the matching category:
         </p>
-        <Alert severity="info" title="Code preview">
-          The code preview shows{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{`<Star />`}</code> instead of
-          raw keys like{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">lucide/star</code>.
-        </Alert>
+        <DataTable
+          columns={['Prop Kind', 'Fixture Category']}
+          rows={[
+            ['icon', 'icons'],
+            ['element', 'elements'],
+            ['node', 'nodes'],
+          ]}
+          monoFirstCol
+        />
+        <div className="mt-4">
+          <Callout intent="info">
+            The kind detection uses a layered heuristic: type pattern matching first (e.g.{' '}
+            <CodeBlock code="LucideIcon" inline /> → icon), then prop name heuristics (e.g.{' '}
+            <CodeBlock code="leadingIcon" inline /> → icon), with source regex as a tiebreaker.
+          </Callout>
+        </div>
       </Section>
 
-      <Section title="Categories and kind filtering">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          When a prop has{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
-            componentKind: &apos;icon&apos;
-          </code>
-          , only fixtures with{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
-            category: &apos;icons&apos;
-          </code>{' '}
-          are shown in the picker. The matching rule is: category name (plural) matches kind name
-          (singular) + &apos;s&apos;.
+      <Section title="Multiple plugins">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          Pass an array of plugins. All fixtures are merged and available in the controls:
         </p>
-      </Section>
-
-      <Section title="Using fixtures with ShowcaseApp">
         <CodeBlock
-          code={`import { lucideFixtures } from './fixtures'
-
-<ShowcaseApp
+          language="tsx"
+          code={`<ShowcaseApp
   meta={meta}
   registry={registry}
-  fixtures={[lucideFixtures]}
+  fixtures={[lucideFixtures, heroiconFixtures, customFixtures]}
 />`}
         />
-        <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-          Multiple plugins merge into a single flat list:
-        </p>
-        <CodeBlock code={`fixtures={[lucideFixtures, badgeFixtures, customFixtures]}`} />
-      </Section>
-
-      <Section title="Children fixture mode">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          When fixtures are available, the{' '}
-          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">children</code> prop gets a{' '}
-          <strong>Text / Fixture</strong> toggle. In fixture mode, you can pick any fixture to render
-          as children — useful for components that accept icons or other elements as children.
+        <p className="text-sm text-fg-muted mt-4 leading-relaxed">
+          When multiple plugins define values in the same category, keys are qualified with the plugin
+          name to avoid collisions: <CodeBlock code="lucide:star" inline /> vs{' '}
+          <CodeBlock code="heroicon:star" inline />.
         </p>
       </Section>
-
-      <div className="mt-14 flex gap-3">
-        <LinkCard
-          href="/docs/configuration"
-          title="Configuration"
-          icon={Settings}
-          direction="back"
-        />
-        <LinkCard
-          href="/docs/api"
-          title="API Reference"
-          description="All exports, types, and props"
-          icon={FileCode}
-          direction="forward"
-        />
-      </div>
     </article>
   )
 }
@@ -144,7 +111,7 @@ export const lucideFixtures = defineFixtures({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-12">
-      <h2 className="text-xl font-bold text-gray-900 mb-5">{title}</h2>
+      <h2 className="text-xl font-bold text-fg mb-5">{title}</h2>
       {children}
     </section>
   )

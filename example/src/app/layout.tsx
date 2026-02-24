@@ -1,16 +1,22 @@
 import type { ReactNode } from 'react'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
+
 export const metadata = {
-  title: 'jc — just-components',
+  title: 'jc — Zero-Config Component Showcase',
   description:
-    'Zero-config component showcase for React. Auto-discovers your components, extracts TypeScript props, and generates an interactive playground.',
+    'Auto-discovers your React components, reads TypeScript props, and generates an interactive playground. No stories. No addons.',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="m-0 font-sans antialiased text-gray-900 bg-white">{children}</body>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${inter.variable} ${jetbrains.variable} bg-surface text-fg font-sans antialiased`}>
+        {children}
+      </body>
     </html>
   )
 }

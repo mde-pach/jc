@@ -11,9 +11,13 @@ import type {
   JcComponentMeta,
   JcComponentPropKind,
   JcConfig,
+  JcExamplePreset,
   JcMeta,
   JcPropMeta,
 } from '../types.js'
+import { createAstAnalyzer, getCompilerOptions } from './ast-analyze.js'
+import { detectWrapperFromExamples, parseExamplePreset } from './example-parser.js'
+import { analyzeComponentUsage } from './usage-analysis.js'
 
 /** Apply path alias mapping: replace source prefixes with alias prefixes */
 export function applyPathAlias(filePath: string, pathAlias: Record<string, string>): string {
@@ -67,35 +71,20 @@ function findFiles(pattern: string, cwd: string): string[] {
 // ── Parser setup ──────────────────────────────────────────────
 
 function createParser(projectRoot: string, config: JcConfig) {
-  // Build TS paths from config pathAlias (default: { '@/': 'src/' })
   const pathAlias = config.pathAlias ?? { '@/': 'src/' }
-  const tsPaths: Record<string, string[]> = {}
-  for (const [alias, sourcePrefix] of Object.entries(pathAlias)) {
-    tsPaths[`${alias}*`] = [`./${sourcePrefix}*`]
-  }
+  const compilerOptions = getCompilerOptions(projectRoot, pathAlias)
 
-  return withCompilerOptions(
-    {
-      esModuleInterop: true,
-      jsx: ts.JsxEmit.ReactJSX,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      target: ts.ScriptTarget.ES2020,
-      strict: true,
-      paths: tsPaths,
-      baseUrl: projectRoot,
+  return withCompilerOptions(compilerOptions, {
+    savePropValueAsString: true,
+    shouldExtractLiteralValuesFromEnum: true,
+    shouldExtractValuesFromUnion: true,
+    shouldIncludeExpression: true,
+    propFilter: (prop) => {
+      if (prop.name === 'children') return true
+      if (prop.parent?.fileName.includes('@types/react')) return false
+      return true
     },
-    {
-      savePropValueAsString: true,
-      shouldExtractLiteralValuesFromEnum: true,
-      shouldExtractValuesFromUnion: true,
-      propFilter: (prop) => {
-        if (prop.name === 'children') return true
-        if (prop.parent?.fileName.includes('@types/react')) return false
-        return true
-      },
-    },
-  )
+  })
 }
 
 // ── Prop filtering ────────────────────────────────────────────
@@ -250,6 +239,13 @@ export function detectComponentKind(
 ): JcComponentPropKind | undefined {
   const name = propName.toLowerCase()
 
+  // Structured types (object literals, arrays of objects) are never component props,
+  // even if they contain ReactNode/Element fields inside.
+  // e.g. `{ label: string; content: ReactNode }[]` is data, not a component slot.
+  if (rawType.startsWith('{') || rawType.startsWith('Array<{') || /^\{[^}]*\}\[\]$/.test(rawType)) {
+    return undefined
+  }
+
   // Type-based detection (explicit type names)
   for (const pattern of ICON_TYPE_PATTERNS) {
     if (pattern.test(rawType)) return 'icon'
@@ -331,16 +327,26 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
 
   console.log(`[jc] Found ${files.length} component files`)
 
+  // Create a shared ts.Program for AST analysis
+  const pathAlias = config.pathAlias ?? { '@/': 'src/' }
+  const compilerOptions = getCompilerOptions(projectRoot, pathAlias)
+  const program = ts.createProgram(files, compilerOptions)
+  const astAnalyzer = createAstAnalyzer(program)
+
   for (const file of files) {
     try {
       const source = readFileSync(file, 'utf-8')
-      const parsed = parser.parse(file)
+      const parsed = parser.parseWithProgramProvider(file, () => program)
 
       for (const doc of parsed) {
         if (excludeNames.has(doc.displayName)) continue
 
+        // AST analysis for this component (may return undefined)
+        const astResult = astAnalyzer.analyzeComponent(file, doc.displayName)
+
         const props: Record<string, JcPropMeta> = {}
-        let acceptsChildren = detectAcceptsChildren(source)
+        // AST children detection → regex fallback
+        let acceptsChildren = astResult?.acceptsChildren ?? detectAcceptsChildren(source)
 
         for (const [propName, propInfo] of Object.entries(doc.props)) {
           if (propName === 'children') {
@@ -355,10 +361,16 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
             // biome-ignore lint/suspicious/noExplicitAny: react-docgen-typescript exposes untyped .value array on union types
             (propInfo.type as any)?.value?.map((v: any) => v.value?.replace(/"/g, '')) ??
             undefined
-          const values = cleanValues(rawValues)
-          const boolEnum = isBooleanEnum(rawType, rawValues)
 
-          const componentKind = detectComponentKind(propName, rawType, source)
+          const astProp = astResult?.props[propName]
+
+          // AST values → regex fallback
+          const values = astProp?.values ?? cleanValues(rawValues)
+          // AST boolean → regex fallback
+          const boolEnum = astProp?.isBoolean ?? isBooleanEnum(rawType, rawValues)
+          // AST componentKind → regex fallback
+          const componentKind =
+            astProp?.componentKind ?? detectComponentKind(propName, rawType, source)
 
           props[propName] = {
             name: propName,
@@ -379,6 +391,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
           description: doc.description ?? '',
           props,
           acceptsChildren,
+          ...(astResult?.tags ? { tags: astResult.tags } : {}),
         })
       }
     } catch (err) {
@@ -396,6 +409,49 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
   }
   const finalComponents = [...deduped.values()]
 
+  // Wrapper detection: if all @example blocks wrap the component in the same parent(s),
+  // record those parents as required wrappers (only if they exist in extracted components)
+  const componentNames = new Set(finalComponents.map((c) => c.displayName))
+  for (const comp of finalComponents) {
+    if (!comp.tags?.example) continue
+    const detected = detectWrapperFromExamples(comp.tags.example, comp.displayName)
+    if (detected) {
+      const validWrappers = detected.filter((w) => componentNames.has(w.wrapperName))
+      if (validWrappers.length > 0) {
+        comp.wrapperComponents = validWrappers.map((w) => ({
+          displayName: w.wrapperName,
+          defaultProps: w.defaultProps,
+        }))
+      }
+    }
+  }
+
+  // Example preset parsing: parse @example blocks into selectable presets
+  for (const comp of finalComponents) {
+    if (!comp.tags?.example) continue
+    const presets: JcExamplePreset[] = []
+    for (let i = 0; i < comp.tags.example.length; i++) {
+      const parsed = parseExamplePreset(comp.tags.example[i], comp.displayName)
+      if (parsed) {
+        presets.push({
+          index: i,
+          propValues: parsed.subjectProps,
+          childrenText: parsed.childrenText,
+          wrapperProps: parsed.wrapperProps,
+        })
+      }
+    }
+    if (presets.length > 0) {
+      comp.examples = presets
+    }
+  }
+
+  // Usage analysis: count direct + transitive references across the project
+  const usageCounts = analyzeComponentUsage(projectRoot, finalComponents)
+  for (const comp of finalComponents) {
+    comp.usageCount = usageCounts.get(comp.displayName)
+  }
+
   console.log(
     `[jc] Extracted ${finalComponents.length} components (${components.length} before dedup)`,
   )
@@ -404,6 +460,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
     generatedAt: new Date().toISOString(),
     componentDir: config.componentGlob,
     components: finalComponents,
+    pathAlias: config.pathAlias ?? { '@/': 'src/' },
   }
 }
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { formatArrayTokens, generateCodeTokens } from '../lib/code-tokens.js'
-import type { JcComponentMeta, JcResolvedFixture } from '../types.js'
+import {
+  componentFixtureToCodeTokens,
+  formatArrayTokens,
+  generateCodeTokens,
+} from '../lib/code-tokens.js'
+import type { JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -328,15 +332,175 @@ describe('formatArrayTokens', () => {
     expect(text).toBe('["hello", Star]')
   })
 
-  it('formats objects with JSON.stringify', () => {
+  it('formats objects with per-field tokens', () => {
     const tokens = formatArrayTokens([{ a: 1 }], [])
     const text = tokenText(tokens)
-    expect(text).toBe('[{"a":1}]')
+    expect(text).toBe('[{ a: 1 }]')
   })
 
   it('returns empty brackets for empty array', () => {
     const tokens = formatArrayTokens([], [])
     const text = tokenText(tokens)
     expect(text).toBe('[]')
+  })
+})
+
+// ── componentFixtureToCodeTokens ────────────────────────────
+
+describe('componentFixtureToCodeTokens', () => {
+  const meta: JcMeta = {
+    generatedAt: '2026-01-01',
+    componentDir: 'src/components',
+    components: [
+      {
+        displayName: 'Button',
+        filePath: 'src/components/ui/button.tsx',
+        description: '',
+        acceptsChildren: true,
+        props: {
+          variant: {
+            name: 'variant',
+            type: '"primary" | "secondary"',
+            values: ['primary', 'secondary'],
+            required: false,
+            description: '',
+            isChildren: false,
+          },
+          disabled: {
+            name: 'disabled',
+            type: 'boolean',
+            required: false,
+            description: '',
+            isChildren: false,
+          },
+        },
+      },
+    ],
+  }
+
+  it('generates full JSX with overridden props and children', () => {
+    const override = {
+      props: { variant: 'secondary', disabled: false },
+      childrenText: 'Click me',
+    }
+    const tokens = componentFixtureToCodeTokens('components/Button', override, meta, fixtures)
+    const text = tokenText(tokens)
+    expect(text).toBe('<Button variant="secondary">Click me</Button>')
+  })
+
+  it('generates self-closing JSX when no children text', () => {
+    const override = {
+      props: { variant: 'primary' },
+      childrenText: '',
+    }
+    const tokens = componentFixtureToCodeTokens('components/Button', override, meta, fixtures)
+    const text = tokenText(tokens)
+    expect(text).toBe('<Button variant="primary" />')
+  })
+
+  it('omits false booleans and empty values', () => {
+    const override = {
+      props: { variant: '', disabled: false },
+      childrenText: '',
+    }
+    const tokens = componentFixtureToCodeTokens('components/Button', override, meta, fixtures)
+    const text = tokenText(tokens)
+    expect(text).toBe('<Button />')
+  })
+
+  it('falls back to simple tag for unknown component', () => {
+    const override = { props: {}, childrenText: '' }
+    const tokens = componentFixtureToCodeTokens('components/Unknown', override, meta, fixtures)
+    const text = tokenText(tokens)
+    expect(text).toBe('<Unknown />')
+  })
+})
+
+// ── generateCodeTokens with fixture overrides ───────────────
+
+describe('generateCodeTokens with fixture overrides', () => {
+  const meta: JcMeta = {
+    generatedAt: '2026-01-01',
+    componentDir: 'src/components',
+    components: [
+      {
+        displayName: 'Button',
+        filePath: 'src/components/ui/button.tsx',
+        description: '',
+        acceptsChildren: true,
+        props: {
+          label: {
+            name: 'label',
+            type: 'string',
+            required: true,
+            description: '',
+            isChildren: false,
+          },
+        },
+      },
+    ],
+  }
+
+  const componentFixtures: JcResolvedFixture[] = [
+    ...fixtures,
+    {
+      key: 'Button',
+      label: 'Button',
+      category: 'components',
+      pluginName: 'components',
+      qualifiedKey: 'components/Button',
+      render: () => 'button-node',
+    },
+  ]
+
+  it('renders component fixture prop with overrides as full JSX', () => {
+    const comp = makeComponent({
+      props: {
+        trigger: {
+          name: 'trigger',
+          type: 'ReactNode',
+          required: false,
+          description: '',
+          isChildren: false,
+          componentKind: 'node',
+        },
+      },
+    })
+    const overrides = {
+      'prop:trigger': { props: { label: 'Go' }, childrenText: 'Click' },
+    }
+    const tokens = generateCodeTokens(
+      comp,
+      { trigger: 'components/Button' },
+      '',
+      'text',
+      null,
+      componentFixtures,
+      undefined,
+      overrides,
+      meta,
+    )
+    const text = tokenText(tokens)
+    expect(text).toContain('trigger={<Button label="Go">Click</Button>}')
+  })
+
+  it('renders children component fixture with overrides as full JSX', () => {
+    const comp = makeComponent({ acceptsChildren: true })
+    const overrides = {
+      children: { props: { label: 'Submit' }, childrenText: 'OK' },
+    }
+    const tokens = generateCodeTokens(
+      comp,
+      {},
+      '',
+      'fixture',
+      'components/Button',
+      componentFixtures,
+      undefined,
+      overrides,
+      meta,
+    )
+    const text = tokenText(tokens)
+    expect(text).toContain('<Button label="Submit">OK</Button>')
   })
 })

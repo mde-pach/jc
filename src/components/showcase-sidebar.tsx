@@ -113,13 +113,27 @@ export function ShowcaseSidebar({
                   >
                     {comp.displayName}
                   </span>
-                  {propCount > 0 && (
-                    <span
-                      style={{ fontSize: '9px', opacity: 0.3, marginLeft: '8px', flexShrink: 0 }}
-                    >
-                      {propCount}
-                    </span>
-                  )}
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      flexShrink: 0,
+                      marginLeft: '8px',
+                    }}
+                  >
+                    {comp.usageCount && comp.usageCount.total > 0 && (
+                      <span
+                        style={{ fontSize: '9px', opacity: 0.35 }}
+                        title={`${comp.usageCount.direct} direct + ${comp.usageCount.indirect} indirect usages`}
+                      >
+                        ×{comp.usageCount.total}
+                      </span>
+                    )}
+                    {propCount > 0 && (
+                      <span style={{ fontSize: '9px', opacity: 0.3 }}>{propCount}</span>
+                    )}
+                  </span>
                 </button>
               )
             })}

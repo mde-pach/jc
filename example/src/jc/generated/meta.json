@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-02-21T11:19:38.781Z",
+  "generatedAt": "2026-02-24T10:20:53.079Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
-      "displayName": "IconButton",
-      "filePath": "src/components/ui/actions/icon-button.tsx",
-      "description": "",
+      "displayName": "CommandButton",
+      "filePath": "src/components/ui/actions/command-button.tsx",
+      "description": "A versatile command button with icon, keyboard shortcut, and loading state.",
       "props": {
         "icon": {
           "name": "icon",
-          "type": "LucideIcon",
-          "rawType": "LucideIcon",
-          "required": true,
-          "description": "Lucide icon component rendered before the label",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Leading icon",
           "isChildren": false,
           "componentKind": "icon"
         },
@@ -21,14 +21,14 @@
           "type": "enum",
           "rawType": "enum",
           "values": [
+            "default",
             "primary",
-            "secondary",
-            "outline",
-            "ghost"
+            "ghost",
+            "destructive"
           ],
           "required": false,
-          "defaultValue": "primary",
-          "description": "Visual style variant",
+          "defaultValue": "default",
+          "description": "Visual variant",
           "isChildren": false
         },
         "size": {
@@ -45,22 +45,341 @@
           "description": "Button size",
           "isChildren": false
         },
+        "loading": {
+          "name": "loading",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Show loading spinner",
+          "isChildren": false
+        },
         "disabled": {
           "name": "disabled",
           "type": "boolean",
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether the button is disabled",
+          "description": "Disable interaction",
+          "isChildren": false
+        },
+        "shortcut": {
+          "name": "shortcut",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Keyboard shortcut hint",
+          "isChildren": false
+        },
+        "trailingBadge": {
+          "name": "trailingBadge",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional trailing badge element",
+          "isChildren": false,
+          "componentKind": "node"
+        }
+      },
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<CommandButton icon={Download} variant=\"primary\" shortcut=\"Cmd+S\">Save</CommandButton>",
+          "<CommandButton icon={Trash2} variant=\"destructive\" loading>Deleting...</CommandButton>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "icon": "Download",
+            "variant": "primary",
+            "shortcut": "Cmd+S"
+          },
+          "childrenText": "Save",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "icon": "Trash2",
+            "variant": "destructive",
+            "loading": "true"
+          },
+          "childrenText": "Deleting...",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 1,
+        "indirect": 0,
+        "total": 1
+      }
+    },
+    {
+      "displayName": "IconButton",
+      "filePath": "src/components/ui/actions/icon-button.tsx",
+      "description": "A button with a leading icon and text label.",
+      "props": {
+        "icon": {
+          "name": "icon",
+          "type": "LucideIcon",
+          "rawType": "LucideIcon",
+          "required": true,
+          "description": "",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "rounded": {
+          "name": "rounded",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "description": "",
+          "isChildren": false
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "description": "",
           "isChildren": false
         }
       },
-      "acceptsChildren": true
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<IconButton icon={Heart}>Like</IconButton>",
+          "<IconButton icon={Settings} rounded>Settings</IconButton>",
+          "<IconButton icon={Trash2} disabled>Delete</IconButton>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "icon": "Heart"
+          },
+          "childrenText": "Like",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "icon": "Settings",
+            "rounded": "true"
+          },
+          "childrenText": "Settings",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "icon": "Trash2",
+            "disabled": "true"
+          },
+          "childrenText": "Delete",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
+    },
+    {
+      "displayName": "Accordion",
+      "filePath": "src/components/ui/data-display/accordion.tsx",
+      "description": "A collapsible accordion container built on Radix UI.",
+      "props": {
+        "type": {
+          "name": "type",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "single",
+            "multiple"
+          ],
+          "required": false,
+          "defaultValue": "single",
+          "description": "Whether one or multiple items can be open",
+          "isChildren": false
+        },
+        "collapsible": {
+          "name": "collapsible",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "true",
+          "description": "Whether items are collapsible when type is single",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true,
+      "usageCount": {
+        "direct": 1,
+        "indirect": 2,
+        "total": 3
+      }
+    },
+    {
+      "displayName": "AccordionItem",
+      "filePath": "src/components/ui/data-display/accordion.tsx",
+      "description": "A single item within an Accordion.",
+      "props": {
+        "value": {
+          "name": "value",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Unique value for this item",
+          "isChildren": false
+        },
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Header text displayed in the trigger",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Accordion type=\"single\" collapsible>\n  <AccordionItem value=\"install\" title=\"How do I install jc?\">Run bun add jc.</AccordionItem>\n</Accordion>",
+          "<Accordion type=\"multiple\">\n  <AccordionItem value=\"faq-1\" title=\"Is jc free?\">Yes, MIT licensed.</AccordionItem>\n</Accordion>"
+        ]
+      },
+      "wrapperComponents": [
+        {
+          "displayName": "Accordion",
+          "defaultProps": {
+            "type": "single",
+            "collapsible": "true"
+          }
+        }
+      ],
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "value": "install",
+            "title": "How do I install jc?"
+          },
+          "childrenText": "Run bun add jc.",
+          "wrapperProps": {
+            "Accordion": {
+              "type": "single",
+              "collapsible": "true"
+            }
+          }
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "value": "faq-1",
+            "title": "Is jc free?"
+          },
+          "childrenText": "Yes, MIT licensed.",
+          "wrapperProps": {
+            "Accordion": {
+              "type": "multiple"
+            }
+          }
+        }
+      ],
+      "usageCount": {
+        "direct": 1,
+        "indirect": 1,
+        "total": 2
+      }
+    },
+    {
+      "displayName": "Avatar",
+      "filePath": "src/components/ui/data-display/avatar.tsx",
+      "description": "A user avatar with image and initials fallback, built on Radix UI.",
+      "props": {
+        "src": {
+          "name": "src",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Image URL",
+          "isChildren": false
+        },
+        "name": {
+          "name": "name",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "User's display name (used for alt text and initials fallback)",
+          "isChildren": false
+        },
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Avatar size",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<Avatar name=\"Alice Martin\" size=\"sm\" />",
+          "<Avatar name=\"Bob Johnson\" size=\"lg\" src=\"https://i.pravatar.cc/150?u=bob\" />",
+          "<Avatar name=\"Claire Dupont\" />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "name": "Alice Martin",
+            "size": "sm"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "name": "Bob Johnson",
+            "size": "lg",
+            "src": "https://i.pravatar.cc/150?u=bob"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "name": "Claire Dupont"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
     },
     {
       "displayName": "Badge",
       "filePath": "src/components/ui/data-display/badge.tsx",
-      "description": "",
+      "description": "A compact status indicator badge with color variants.",
       "props": {
         "variant": {
           "name": "variant",
@@ -71,11 +390,12 @@
             "success",
             "warning",
             "error",
-            "info"
+            "info",
+            "outline"
           ],
           "required": false,
           "defaultValue": "default",
-          "description": "Badge color variant",
+          "description": "Color variant",
           "isChildren": false
         },
         "pill": {
@@ -86,14 +406,73 @@
           "defaultValue": "false",
           "description": "Rounded pill shape",
           "isChildren": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional leading icon",
+          "isChildren": false,
+          "componentKind": "icon"
         }
       },
-      "acceptsChildren": true
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Badge variant=\"success\" icon={CheckCircle}>Active</Badge>",
+          "<Badge variant=\"error\" pill>Expired</Badge>",
+          "<Badge variant=\"warning\" icon={AlertTriangle}>Pending</Badge>",
+          "<Badge variant=\"outline\">Draft</Badge>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "variant": "success",
+            "icon": "CheckCircle"
+          },
+          "childrenText": "Active",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "variant": "error",
+            "pill": "true"
+          },
+          "childrenText": "Expired",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "variant": "warning",
+            "icon": "AlertTriangle"
+          },
+          "childrenText": "Pending",
+          "wrapperProps": {}
+        },
+        {
+          "index": 3,
+          "propValues": {
+            "variant": "outline"
+          },
+          "childrenText": "Draft",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 2,
+        "indirect": 0,
+        "total": 2
+      }
     },
     {
       "displayName": "Card",
       "filePath": "src/components/ui/data-display/card.tsx",
-      "description": "",
+      "description": "A container card with optional header and action slot.",
       "props": {
         "title": {
           "name": "title",
@@ -111,13 +490,22 @@
           "description": "Optional description below the title",
           "isChildren": false
         },
+        "headerAction": {
+          "name": "headerAction",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Action element rendered at the end of the header",
+          "isChildren": false,
+          "componentKind": "node"
+        },
         "elevated": {
           "name": "elevated",
           "type": "boolean",
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether to add a shadow",
+          "description": "Whether to add a subtle shadow",
           "isChildren": false
         },
         "padding": {
@@ -125,10 +513,10 @@
           "type": "enum",
           "rawType": "enum",
           "values": [
-            "none",
             "sm",
             "md",
-            "lg"
+            "lg",
+            "none"
           ],
           "required": false,
           "defaultValue": "md",
@@ -136,12 +524,53 @@
           "isChildren": false
         }
       },
-      "acceptsChildren": true
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Card title=\"Overview\" description=\"A quick summary of your project\">Card body content goes here.</Card>",
+          "<Card title=\"Settings\" elevated padding=\"lg\">Elevated card with large padding.</Card>",
+          "<Card padding=\"none\">Borderless content area.</Card>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "title": "Overview",
+            "description": "A quick summary of your project"
+          },
+          "childrenText": "Card body content goes here.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "title": "Settings",
+            "elevated": "true",
+            "padding": "lg"
+          },
+          "childrenText": "Elevated card with large padding.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "padding": "none"
+          },
+          "childrenText": "Borderless content area.",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 1,
+        "indirect": 0,
+        "total": 1
+      }
     },
     {
       "displayName": "CodeBlock",
       "filePath": "src/components/ui/data-display/code-block.tsx",
-      "description": "",
+      "description": "A styled monospace code block with syntax highlighting.",
       "props": {
         "code": {
           "name": "code",
@@ -149,6 +578,14 @@
           "rawType": "string",
           "required": true,
           "description": "The code content to display",
+          "isChildren": false
+        },
+        "language": {
+          "name": "language",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Programming language (shown as label)",
           "isChildren": false
         },
         "inline": {
@@ -161,12 +598,53 @@
           "isChildren": false
         }
       },
-      "acceptsChildren": false
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<CodeBlock code=\"bun add jc\" language=\"bash\" />",
+          "<CodeBlock code=\"const x: number = 42;\" language=\"ts\" />",
+          "<CodeBlock code=\"npm install\" inline />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "code": "bun add jc",
+            "language": "bash"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "code": "const x: number = 42;",
+            "language": "ts"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "code": "npm install",
+            "inline": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 6,
+        "indirect": 0,
+        "total": 6
+      }
     },
     {
-      "displayName": "PropsTable",
-      "filePath": "src/components/ui/data-display/props-table.tsx",
-      "description": "",
+      "displayName": "DataTable",
+      "filePath": "src/components/ui/data-display/data-table.tsx",
+      "description": "A minimal data table for displaying structured information.",
       "props": {
         "columns": {
           "name": "columns",
@@ -181,7 +659,7 @@
           "type": "string[][]",
           "rawType": "string[][]",
           "required": true,
-          "description": "Row data — each row is an array of cell strings matching the columns",
+          "description": "Row data (array of arrays matching column count)",
           "isChildren": false
         },
         "monoFirstCol": {
@@ -189,65 +667,193 @@
           "type": "boolean",
           "rawType": "enum",
           "required": false,
-          "defaultValue": "true",
-          "description": "Whether the first column should be monospace-styled",
+          "defaultValue": "false",
+          "description": "Render first column in monospace font",
+          "isChildren": false
+        },
+        "striped": {
+          "name": "striped",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Alternate row backgrounds",
           "isChildren": false
         }
       },
-      "acceptsChildren": false
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<DataTable columns={[\"Name\", \"Role\"]} rows={[[\"Alice\", \"Admin\"], [\"Bob\", \"Editor\"]]} striped />",
+          "<DataTable columns={[\"Command\", \"Description\"]} rows={[[\"dev\", \"Start dev server\"], [\"build\", \"Production build\"]]} monoFirstCol />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "columns": "[\"Name\", \"Role\"]",
+            "rows": "[[\"Alice\", \"Admin\"], [\"Bob\", \"Editor\"]]",
+            "striped": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "columns": "[\"Command\", \"Description\"]",
+            "rows": "[[\"dev\", \"Start dev server\"], [\"build\", \"Production build\"]]",
+            "monoFirstCol": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 4,
+        "indirect": 0,
+        "total": 4
+      }
     },
     {
-      "displayName": "Tabs",
-      "filePath": "src/components/ui/data-display/tabs.tsx",
-      "description": "",
+      "displayName": "StatCard",
+      "filePath": "src/components/ui/data-display/stat-card.tsx",
+      "description": "A metric card displaying a key statistic with optional trend indicator.",
       "props": {
-        "tabs": {
-          "name": "tabs",
-          "type": "{ label: string; content: ReactNode; }[]",
-          "rawType": "{ label: string; content: ReactNode; }[]",
+        "label": {
+          "name": "label",
+          "type": "string",
+          "rawType": "string",
           "required": true,
-          "description": "Tab definitions — each must have a unique label",
-          "isChildren": false,
-          "componentKind": "node"
+          "description": "Metric label",
+          "isChildren": false
         },
-        "defaultIndex": {
-          "name": "defaultIndex",
+        "value": {
+          "name": "value",
+          "type": "number",
+          "rawType": "number",
+          "required": true,
+          "description": "Numeric value",
+          "isChildren": false
+        },
+        "change": {
+          "name": "change",
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "defaultValue": "0",
-          "description": "Index of the initially active tab",
+          "description": "Change text (e.g. \"+12%\")",
+          "isChildren": false
+        },
+        "trend": {
+          "name": "trend",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "up",
+            "down",
+            "flat"
+          ],
+          "required": false,
+          "defaultValue": "flat",
+          "description": "Trend direction",
+          "isChildren": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Decorative icon",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Metadata tags",
           "isChildren": false
         }
       },
-      "acceptsChildren": false
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<StatCard label=\"Revenue\" value={12500} change=\"+14%\" trend=\"up\" icon={DollarSign} />",
+          "<StatCard label=\"Bugs\" value={3} change=\"-60%\" trend=\"down\" icon={Bug} tags={[\"critical\", \"ui\"]} />",
+          "<StatCard label=\"Uptime\" value={99} trend=\"flat\" />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "label": "Revenue",
+            "value": "12500",
+            "change": "+14%",
+            "trend": "up",
+            "icon": "DollarSign"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "label": "Bugs",
+            "value": "3",
+            "change": "-60%",
+            "trend": "down",
+            "icon": "Bug",
+            "tags": "[\"critical\", \"ui\"]"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "label": "Uptime",
+            "value": "99",
+            "trend": "flat"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
     },
     {
-      "displayName": "Alert",
-      "filePath": "src/components/ui/feedback/alert.tsx",
-      "description": "",
+      "displayName": "Callout",
+      "filePath": "src/components/ui/feedback/callout.tsx",
+      "description": "An informational callout banner with intent variants.",
       "props": {
         "title": {
           "name": "title",
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Alert title",
+          "description": "Optional title",
           "isChildren": false
         },
-        "severity": {
-          "name": "severity",
+        "intent": {
+          "name": "intent",
           "type": "enum",
           "rawType": "enum",
           "values": [
-            "info",
             "success",
             "warning",
-            "error"
+            "error",
+            "info"
           ],
           "required": false,
           "defaultValue": "info",
-          "description": "Severity level",
+          "description": "Visual intent",
           "isChildren": false
         },
         "dismissible": {
@@ -256,80 +862,229 @@
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether the alert can be dismissed",
+          "description": "Show a dismiss button",
           "isChildren": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Override the default icon",
+          "isChildren": false,
+          "componentKind": "icon"
         }
       },
-      "acceptsChildren": true
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Callout intent=\"info\" title=\"Heads up\">This feature is in beta.</Callout>",
+          "<Callout intent=\"success\" title=\"Saved\">Your changes have been applied.</Callout>",
+          "<Callout intent=\"warning\" dismissible>Storage is almost full.</Callout>",
+          "<Callout intent=\"error\" icon={ShieldAlert}>Access denied. Contact your admin.</Callout>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "intent": "info",
+            "title": "Heads up"
+          },
+          "childrenText": "This feature is in beta.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "intent": "success",
+            "title": "Saved"
+          },
+          "childrenText": "Your changes have been applied.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "intent": "warning",
+            "dismissible": "true"
+          },
+          "childrenText": "Storage is almost full.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 3,
+          "propValues": {
+            "intent": "error",
+            "icon": "ShieldAlert"
+          },
+          "childrenText": "Access denied. Contact your admin.",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 5,
+        "indirect": 0,
+        "total": 5
+      }
     },
     {
-      "displayName": "Button",
-      "filePath": "src/components/ui/forms/button.tsx",
-      "description": "",
+      "displayName": "Dialog",
+      "filePath": "src/components/ui/feedback/dialog.tsx",
+      "description": "A modal dialog built on Radix UI primitives.",
       "props": {
-        "variant": {
-          "name": "variant",
+        "trigger": {
+          "name": "trigger",
           "type": "enum",
           "rawType": "enum",
-          "values": [
-            "default",
-            "primary",
-            "secondary",
-            "destructive",
-            "outline",
-            "ghost"
-          ],
           "required": false,
-          "defaultValue": "default",
-          "description": "Visual style variant",
+          "description": "Element that triggers the dialog",
+          "isChildren": false,
+          "componentKind": "node"
+        },
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Dialog title",
           "isChildren": false
         },
-        "size": {
-          "name": "size",
+        "description": {
+          "name": "description",
           "type": "enum",
           "rawType": "enum",
-          "values": [
-            "sm",
-            "md",
-            "lg"
-          ],
           "required": false,
-          "defaultValue": "md",
-          "description": "Button size",
+          "description": "Optional description below the title",
           "isChildren": false
         },
-        "disabled": {
-          "name": "disabled",
+        "defaultOpen": {
+          "name": "defaultOpen",
           "type": "boolean",
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether the button is disabled",
-          "isChildren": false
-        },
-        "fullWidth": {
-          "name": "fullWidth",
-          "type": "boolean",
-          "rawType": "enum",
-          "required": false,
-          "defaultValue": "false",
-          "description": "Full width button",
+          "description": "Whether the dialog is open by default",
           "isChildren": false
         }
       },
-      "acceptsChildren": true
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Dialog title=\"Confirm action\" description=\"Are you sure you want to proceed?\" defaultOpen>Dialog body content here.</Dialog>",
+          "<Dialog title=\"New project\" defaultOpen>Fill in the details to create a project.</Dialog>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "title": "Confirm action",
+            "description": "Are you sure you want to proceed?",
+            "defaultOpen": "true"
+          },
+          "childrenText": "Dialog body content here.",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "title": "New project",
+            "defaultOpen": "true"
+          },
+          "childrenText": "Fill in the details to create a project.",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
     },
     {
-      "displayName": "Input",
-      "filePath": "src/components/ui/forms/input.tsx",
-      "description": "",
+      "displayName": "Tooltip",
+      "filePath": "src/components/ui/feedback/tooltip.tsx",
+      "description": "A tooltip that displays on hover, built on Radix UI.",
+      "props": {
+        "content": {
+          "name": "content",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Tooltip text content",
+          "isChildren": false
+        },
+        "side": {
+          "name": "side",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "top",
+            "bottom",
+            "left",
+            "right"
+          ],
+          "required": false,
+          "defaultValue": "top",
+          "description": "Preferred side of the trigger to render",
+          "isChildren": false
+        },
+        "delayDuration": {
+          "name": "delayDuration",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "200",
+          "description": "Delay in ms before showing",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": true,
+      "tags": {
+        "example": [
+          "<Tooltip content=\"Copy to clipboard\" side=\"top\">Hover me</Tooltip>",
+          "<Tooltip content=\"More info\" side=\"right\" delayDuration={0}>Help</Tooltip>"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "content": "Copy to clipboard",
+            "side": "top"
+          },
+          "childrenText": "Hover me",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "content": "More info",
+            "side": "right",
+            "delayDuration": "0"
+          },
+          "childrenText": "Help",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
+    },
+    {
+      "displayName": "TextField",
+      "filePath": "src/components/ui/forms/text-field.tsx",
+      "description": "A text input field with label, error state, and optional leading icon.",
       "props": {
         "label": {
           "name": "label",
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Input label displayed above the field",
+          "description": "Input label",
           "isChildren": false
         },
         "placeholder": {
@@ -353,10 +1108,12 @@
           "type": "enum",
           "rawType": "enum",
           "values": [
+            "number",
             "text",
             "email",
             "password",
-            "url"
+            "url",
+            "search"
           ],
           "required": false,
           "defaultValue": "text",
@@ -368,7 +1125,7 @@
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Error message shown below the field",
+          "description": "Error message displayed below the input",
           "isChildren": false
         },
         "disabled": {
@@ -377,7 +1134,7 @@
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether the input is disabled",
+          "description": "Disable interaction",
           "isChildren": false
         },
         "required": {
@@ -386,100 +1143,98 @@
           "rawType": "enum",
           "required": false,
           "defaultValue": "false",
-          "description": "Whether the field is required",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": false
-    },
-    {
-      "displayName": "SectionHeader",
-      "filePath": "src/components/ui/layout/section-header.tsx",
-      "description": "",
-      "props": {
-        "title": {
-          "name": "title",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "The section title",
+          "description": "Show required indicator",
           "isChildren": false
         },
-        "subtitle": {
-          "name": "subtitle",
+        "leadingIcon": {
+          "name": "leadingIcon",
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Optional subtitle displayed below the title",
-          "isChildren": false
-        },
-        "badge": {
-          "name": "badge",
-          "type": "enum",
-          "rawType": "enum",
-          "required": false,
-          "description": "Optional trailing element (e.g. a Badge)",
+          "description": "Optional icon displayed inside the input",
           "isChildren": false,
-          "componentKind": "node"
+          "componentKind": "icon"
+        }
+      },
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<TextField label=\"Email\" placeholder=\"you@example.com\" type=\"email\" required leadingIcon={Mail} />",
+          "<TextField label=\"Password\" type=\"password\" placeholder=\"Enter password\" />",
+          "<TextField label=\"Username\" value=\"alice\" error=\"Already taken\" />",
+          "<TextField placeholder=\"Search...\" type=\"search\" leadingIcon={Search} />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "label": "Email",
+            "placeholder": "you@example.com",
+            "type": "email",
+            "required": "true",
+            "leadingIcon": "Mail"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
         },
-        "align": {
-          "name": "align",
+        {
+          "index": 1,
+          "propValues": {
+            "label": "Password",
+            "type": "password",
+            "placeholder": "Enter password"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "label": "Username",
+            "value": "alice",
+            "error": "Already taken"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 3,
+          "propValues": {
+            "placeholder": "Search...",
+            "type": "search",
+            "leadingIcon": "Search"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
+    },
+    {
+      "displayName": "Toggle",
+      "filePath": "src/components/ui/forms/toggle.tsx",
+      "description": "A toggle switch input for boolean settings.",
+      "props": {
+        "checked": {
+          "name": "checked",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the toggle is on",
+          "isChildren": false
+        },
+        "label": {
+          "name": "label",
           "type": "enum",
           "rawType": "enum",
-          "values": [
-            "left",
-            "center"
-          ],
           "required": false,
-          "defaultValue": "center",
-          "description": "Text alignment",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": false
-    },
-    {
-      "displayName": "Steps",
-      "filePath": "src/components/ui/layout/steps.tsx",
-      "description": "Container for a vertical list of numbered steps.",
-      "props": {},
-      "acceptsChildren": true
-    },
-    {
-      "displayName": "Step",
-      "filePath": "src/components/ui/layout/steps.tsx",
-      "description": "",
-      "props": {
-        "step": {
-          "name": "step",
-          "type": "number",
-          "rawType": "number",
-          "required": true,
-          "description": "Step number displayed in the circle",
-          "isChildren": false
-        },
-        "title": {
-          "name": "title",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Step title",
-          "isChildren": false
-        }
-      },
-      "acceptsChildren": true
-    },
-    {
-      "displayName": "LinkCard",
-      "filePath": "src/components/ui/navigation/link-card.tsx",
-      "description": "",
-      "props": {
-        "title": {
-          "name": "title",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "Navigation label (e.g. \"Getting Started\")",
+          "description": "Label displayed next to the toggle",
           "isChildren": false
         },
         "description": {
@@ -487,41 +1242,164 @@
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Short description shown below the title",
+          "description": "Optional description below the label",
           "isChildren": false
         },
-        "href": {
-          "name": "href",
-          "type": "string",
-          "rawType": "string",
-          "required": true,
-          "description": "URL the card links to",
+        "size": {
+          "name": "size",
+          "type": "enum",
+          "rawType": "enum",
+          "values": [
+            "sm",
+            "md"
+          ],
+          "required": false,
+          "defaultValue": "md",
+          "description": "Toggle size",
           "isChildren": false
         },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Disable interaction",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<Toggle label=\"Dark mode\" description=\"Switch between light and dark themes\" checked />",
+          "<Toggle label=\"Notifications\" size=\"sm\" />",
+          "<Toggle label=\"Maintenance\" disabled checked />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "label": "Dark mode",
+            "description": "Switch between light and dark themes",
+            "checked": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "label": "Notifications",
+            "size": "sm"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "label": "Maintenance",
+            "disabled": "true",
+            "checked": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
+    },
+    {
+      "displayName": "EmptyState",
+      "filePath": "src/components/ui/layout/empty-state.tsx",
+      "description": "A placeholder for empty content areas with an icon, message, and optional action.",
+      "props": {
         "icon": {
           "name": "icon",
           "type": "enum",
           "rawType": "enum",
           "required": false,
-          "description": "Optional Lucide icon displayed before the title",
+          "description": "Decorative icon",
           "isChildren": false,
           "componentKind": "icon"
         },
-        "direction": {
-          "name": "direction",
+        "title": {
+          "name": "title",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Primary message",
+          "isChildren": false
+        },
+        "description": {
+          "name": "description",
           "type": "enum",
           "rawType": "enum",
-          "values": [
-            "forward",
-            "back"
-          ],
           "required": false,
-          "defaultValue": "forward",
-          "description": "Direction hint that affects the arrow and alignment",
+          "description": "Supporting description",
           "isChildren": false
+        },
+        "action": {
+          "name": "action",
+          "type": "enum",
+          "rawType": "enum",
+          "required": false,
+          "description": "Action element (e.g. a button)",
+          "isChildren": false,
+          "componentKind": "node"
         }
       },
-      "acceptsChildren": false
+      "acceptsChildren": false,
+      "tags": {
+        "example": [
+          "<EmptyState icon={Inbox} title=\"No messages\" description=\"You're all caught up.\" />",
+          "<EmptyState icon={Search} title=\"No results\" description=\"Try a different search term.\" />",
+          "<EmptyState icon={FolderOpen} title=\"Empty folder\" />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "icon": "Inbox",
+            "title": "No messages",
+            "description": "You're all caught up."
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "icon": "Search",
+            "title": "No results",
+            "description": "Try a different search term."
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "icon": "FolderOpen",
+            "title": "Empty folder"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
+      }
     }
-  ]
+  ],
+  "pathAlias": {
+    "@/": "src/"
+  }
 }

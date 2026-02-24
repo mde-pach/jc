@@ -14,6 +14,18 @@ export interface JcPropMeta {
   componentKind?: JcComponentPropKind
 }
 
+/** A parsed @example preset — prop values the user can toggle to */
+export interface JcExamplePreset {
+  /** Index of the @example block this came from */
+  index: number
+  /** Props extracted from the subject element as string key-value pairs */
+  propValues: Record<string, string>
+  /** Text content of the subject element's children (empty if none) */
+  childrenText: string
+  /** Per-wrapper props from the @example block */
+  wrapperProps: Record<string, Record<string, string>>
+}
+
 /** Metadata for a single exported component */
 export interface JcComponentMeta {
   displayName: string
@@ -21,6 +33,21 @@ export interface JcComponentMeta {
   description: string
   props: Record<string, JcPropMeta>
   acceptsChildren: boolean
+  /** Usage counts across the project (populated by extract) */
+  usageCount?: {
+    direct: number
+    indirect: number
+    total: number
+  }
+  /** JSDoc tags extracted from the component's doc comment */
+  tags?: Record<string, string[]>
+  /** Auto-detected wrapper components from @example blocks (outermost first) */
+  wrapperComponents?: {
+    displayName: string
+    defaultProps: Record<string, string>
+  }[]
+  /** Parsed @example presets — each block becomes a selectable preset in the UI */
+  examples?: JcExamplePreset[]
 }
 
 /** Full extraction output */
@@ -28,6 +55,8 @@ export interface JcMeta {
   generatedAt: string
   componentDir: string
   components: JcComponentMeta[]
+  /** Path alias mapping for generating import statements in the showcase UI */
+  pathAlias?: Record<string, string>
 }
 
 /** Control type for the UI prop editor */

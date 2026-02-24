@@ -1,43 +1,41 @@
 import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 
-/** A small status indicator badge. */
+/**
+ * A compact status indicator badge with color variants.
+ *
+ * @example <Badge variant="success" icon={CheckCircle}>Active</Badge>
+ * @example <Badge variant="error" pill>Expired</Badge>
+ * @example <Badge variant="warning" icon={AlertTriangle}>Pending</Badge>
+ * @example <Badge variant="outline">Draft</Badge>
+ */
 export interface BadgeProps {
   /** Badge content */
   children: ReactNode
-  /** Badge color variant */
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info'
+  /** Color variant */
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline'
   /** Rounded pill shape */
   pill?: boolean
+  /** Optional leading icon */
+  icon?: LucideIcon
 }
 
-export function Badge({
-  children,
-  variant = 'default',
-  pill = false,
-}: BadgeProps) {
-  const colors: Record<string, { bg: string; fg: string }> = {
-    default: { bg: '#e5e7eb', fg: '#374151' },
-    success: { bg: '#d1fae5', fg: '#065f46' },
-    warning: { bg: '#fef3c7', fg: '#92400e' },
-    error: { bg: '#fee2e2', fg: '#991b1b' },
-    info: { bg: '#dbeafe', fg: '#1e40af' },
-  }
+const variantClasses: Record<string, string> = {
+  default: 'bg-surface-overlay text-fg-muted',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  error: 'bg-error/15 text-error',
+  info: 'bg-accent/15 text-accent',
+  outline: 'bg-transparent text-fg-muted border border-border',
+}
 
-  const { bg, fg } = colors[variant] ?? colors.default
-
+/** A compact status indicator badge with color variants. */
+export function Badge({ children, variant = 'default', pill = false, icon: Icon }: BadgeProps) {
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 8px',
-        fontSize: '12px',
-        fontWeight: 500,
-        borderRadius: pill ? '9999px' : '4px',
-        backgroundColor: bg,
-        color: fg,
-      }}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium ${pill ? 'rounded-full' : 'rounded'} ${variantClasses[variant] ?? variantClasses.default}`}
     >
+      {Icon && <Icon size={12} />}
       {children}
     </span>
   )
