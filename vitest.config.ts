@@ -18,6 +18,11 @@ export default defineConfig({
         // separately; the remaining code is useState/useEffect/useCallback lifecycle glue
         'src/lib/use-showcase-state.ts',
         'src/lib/use-theme.ts',
+        'src/lib/use-resolved-component.tsx',
+        // Client-only modules — URL manipulation, CSS custom properties, syntax highlighting
+        'src/lib/url-sync.ts',
+        'src/lib/theme-vars.ts',
+        'src/lib/code-tokens.ts',
         // Test fixtures
         'src/extract/__fixtures__/**',
       ],
