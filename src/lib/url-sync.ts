@@ -3,6 +3,7 @@
  * Handles reading/writing query params and hash-based state serialization.
  */
 
+import type { ChildItem } from '../types.js'
 import type { FixtureOverride } from './use-showcase-state.js'
 
 // ── URL utilities ──────────────────────────────────────────────
@@ -55,23 +56,23 @@ export function setViewportInUrl(viewport: string): void {
 
 export interface SerializedState {
   p?: Record<string, unknown> // propValues (non-default only)
-  ct?: string // childrenText (if different from default)
-  cm?: 'fixture' // childrenMode (only if fixture)
-  cf?: string // childrenFixtureKey
+  ci?: Array<{ t: string; v: string }> // childrenItems (compact format)
+  // Legacy fields for backward compat when deserializing
+  ct?: string // childrenText (legacy)
+  cm?: 'fixture' // childrenMode (legacy)
+  cf?: string // childrenFixtureKey (legacy)
   w?: Record<string, Record<string, unknown>> // wrapperPropsMap (non-default only)
   fo?: Record<string, { p: Record<string, unknown>; c: string }> // fixtureOverrides
 }
 
 export function serializeState(
   propValues: Record<string, unknown>,
-  childrenText: string,
-  childrenMode: 'text' | 'fixture',
-  childrenFixtureKey: string | null,
+  childrenItems: ChildItem[],
   wrapperPropsMap: Record<string, Record<string, unknown>>,
   fixtureOverrides: Record<string, FixtureOverride>,
   defaults: {
     propValues: Record<string, unknown>
-    childrenText: string
+    childrenItems: ChildItem[]
     wrapperPropsMap: Record<string, Record<string, unknown>>
   },
 ): string | null {
@@ -86,9 +87,16 @@ export function serializeState(
   }
   if (Object.keys(diffProps).length > 0) state.p = diffProps
 
-  if (childrenText !== defaults.childrenText) state.ct = childrenText
-  if (childrenMode === 'fixture') state.cm = 'fixture'
-  if (childrenFixtureKey) state.cf = childrenFixtureKey
+  // Serialize children items if different from defaults
+  const defaultCI = defaults.childrenItems
+  const ciChanged =
+    childrenItems.length !== defaultCI.length ||
+    childrenItems.some(
+      (item, i) => item.type !== defaultCI[i]?.type || item.value !== defaultCI[i]?.value,
+    )
+  if (ciChanged && childrenItems.length > 0) {
+    state.ci = childrenItems.map((item) => ({ t: item.type, v: item.value }))
+  }
 
   // Wrapper props diff
   const diffWrappers: Record<string, Record<string, unknown>> = {}
@@ -118,6 +126,25 @@ export function serializeState(
   } catch {
     return null
   }
+}
+
+/** Convert legacy serialized children fields to ChildItem[] */
+export function deserializeChildrenItems(saved: SerializedState): ChildItem[] | null {
+  // New format
+  if (saved.ci) {
+    return saved.ci.map((item) => ({
+      type: item.t === 'fixture' ? 'fixture' : 'text',
+      value: item.v,
+    }))
+  }
+  // Legacy format
+  if (saved.cm === 'fixture' && saved.cf) {
+    return [{ type: 'fixture', value: saved.cf }]
+  }
+  if (saved.ct !== undefined) {
+    return [{ type: 'text', value: saved.ct }]
+  }
+  return null
 }
 
 export function deserializeState(): SerializedState | null {

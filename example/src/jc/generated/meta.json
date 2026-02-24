@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-24T10:20:53.079Z",
+  "generatedAt": "2026-02-24T12:35:00.127Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
@@ -9,7 +9,7 @@
       "props": {
         "icon": {
           "name": "icon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Leading icon",
@@ -18,7 +18,7 @@
         },
         "variant": {
           "name": "variant",
-          "type": "enum",
+          "type": "\"default\" | \"primary\" | \"ghost\" | \"destructive\"",
           "rawType": "enum",
           "values": [
             "default",
@@ -33,7 +33,7 @@
         },
         "size": {
           "name": "size",
-          "type": "enum",
+          "type": "\"sm\" | \"md\" | \"lg\"",
           "rawType": "enum",
           "values": [
             "sm",
@@ -65,7 +65,7 @@
         },
         "shortcut": {
           "name": "shortcut",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Keyboard shortcut hint",
@@ -73,7 +73,7 @@
         },
         "trailingBadge": {
           "name": "trailingBadge",
-          "type": "enum",
+          "type": "ReactNode",
           "rawType": "enum",
           "required": false,
           "description": "Optional trailing badge element",
@@ -196,7 +196,7 @@
       "props": {
         "type": {
           "name": "type",
-          "type": "enum",
+          "type": "\"single\" | \"multiple\"",
           "rawType": "enum",
           "values": [
             "single",
@@ -304,7 +304,7 @@
       "props": {
         "src": {
           "name": "src",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Image URL",
@@ -320,7 +320,7 @@
         },
         "size": {
           "name": "size",
-          "type": "enum",
+          "type": "\"sm\" | \"md\" | \"lg\"",
           "rawType": "enum",
           "values": [
             "sm",
@@ -383,7 +383,7 @@
       "props": {
         "variant": {
           "name": "variant",
-          "type": "enum",
+          "type": "\"default\" | \"success\" | \"warning\" | \"error\" | \"info\" | \"outline\"",
           "rawType": "enum",
           "values": [
             "default",
@@ -409,7 +409,7 @@
         },
         "icon": {
           "name": "icon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Optional leading icon",
@@ -476,7 +476,7 @@
       "props": {
         "title": {
           "name": "title",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Card title displayed in the header",
@@ -484,7 +484,7 @@
         },
         "description": {
           "name": "description",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Optional description below the title",
@@ -492,7 +492,7 @@
         },
         "headerAction": {
           "name": "headerAction",
-          "type": "enum",
+          "type": "ReactNode",
           "rawType": "enum",
           "required": false,
           "description": "Action element rendered at the end of the header",
@@ -510,7 +510,7 @@
         },
         "padding": {
           "name": "padding",
-          "type": "enum",
+          "type": "\"sm\" | \"md\" | \"lg\" | \"none\"",
           "rawType": "enum",
           "values": [
             "sm",
@@ -582,7 +582,7 @@
         },
         "language": {
           "name": "language",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Programming language (shown as label)",
@@ -739,7 +739,7 @@
         },
         "change": {
           "name": "change",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Change text (e.g. \"+12%\")",
@@ -747,7 +747,7 @@
         },
         "trend": {
           "name": "trend",
-          "type": "enum",
+          "type": "\"up\" | \"down\" | \"flat\"",
           "rawType": "enum",
           "values": [
             "up",
@@ -761,7 +761,7 @@
         },
         "icon": {
           "name": "icon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Decorative icon",
@@ -770,7 +770,7 @@
         },
         "tags": {
           "name": "tags",
-          "type": "enum",
+          "type": "string[]",
           "rawType": "enum",
           "required": false,
           "description": "Metadata tags",
@@ -835,7 +835,7 @@
       "props": {
         "title": {
           "name": "title",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Optional title",
@@ -843,7 +843,7 @@
         },
         "intent": {
           "name": "intent",
-          "type": "enum",
+          "type": "\"success\" | \"warning\" | \"error\" | \"info\"",
           "rawType": "enum",
           "values": [
             "success",
@@ -867,7 +867,7 @@
         },
         "icon": {
           "name": "icon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Override the default icon",
@@ -935,7 +935,7 @@
       "props": {
         "trigger": {
           "name": "trigger",
-          "type": "enum",
+          "type": "ReactNode",
           "rawType": "enum",
           "required": false,
           "description": "Element that triggers the dialog",
@@ -952,7 +952,7 @@
         },
         "description": {
           "name": "description",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Optional description below the title",
@@ -1017,7 +1017,7 @@
         },
         "side": {
           "name": "side",
-          "type": "enum",
+          "type": "\"top\" | \"bottom\" | \"left\" | \"right\"",
           "rawType": "enum",
           "values": [
             "top",
@@ -1032,7 +1032,7 @@
         },
         "delayDuration": {
           "name": "delayDuration",
-          "type": "enum",
+          "type": "number",
           "rawType": "enum",
           "required": false,
           "defaultValue": "200",
@@ -1081,7 +1081,7 @@
       "props": {
         "label": {
           "name": "label",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Input label",
@@ -1089,7 +1089,7 @@
         },
         "placeholder": {
           "name": "placeholder",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Placeholder text",
@@ -1097,7 +1097,7 @@
         },
         "value": {
           "name": "value",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Current value",
@@ -1105,7 +1105,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum",
+          "type": "\"number\" | \"text\" | \"email\" | \"password\" | \"url\" | \"search\"",
           "rawType": "enum",
           "values": [
             "number",
@@ -1122,7 +1122,7 @@
         },
         "error": {
           "name": "error",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Error message displayed below the input",
@@ -1148,7 +1148,7 @@
         },
         "leadingIcon": {
           "name": "leadingIcon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Optional icon displayed inside the input",
@@ -1231,7 +1231,7 @@
         },
         "label": {
           "name": "label",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Label displayed next to the toggle",
@@ -1239,7 +1239,7 @@
         },
         "description": {
           "name": "description",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Optional description below the label",
@@ -1247,7 +1247,7 @@
         },
         "size": {
           "name": "size",
-          "type": "enum",
+          "type": "\"sm\" | \"md\"",
           "rawType": "enum",
           "values": [
             "sm",
@@ -1320,7 +1320,7 @@
       "props": {
         "icon": {
           "name": "icon",
-          "type": "enum",
+          "type": "LucideIcon",
           "rawType": "enum",
           "required": false,
           "description": "Decorative icon",
@@ -1337,7 +1337,7 @@
         },
         "description": {
           "name": "description",
-          "type": "enum",
+          "type": "string",
           "rawType": "enum",
           "required": false,
           "description": "Supporting description",
@@ -1345,7 +1345,7 @@
         },
         "action": {
           "name": "action",
-          "type": "enum",
+          "type": "ReactNode",
           "rawType": "enum",
           "required": false,
           "description": "Action element (e.g. a button)",

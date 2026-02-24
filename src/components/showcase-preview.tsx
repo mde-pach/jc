@@ -11,27 +11,19 @@
  * - Wraps the rendered component in an ErrorBoundary for resilience
  */
 
-import {
-  type ComponentType,
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { type ComponentType, type ReactNode, useCallback, useMemo, useState } from 'react'
 import { C_DARK, C_LIGHT, generateCodeTokens, generateImportTokens } from '../lib/code-tokens.js'
 import { generateVariedInstances } from '../lib/faker-map.js'
-import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import { useResolvedComponent } from '../lib/use-resolved-component.jsx'
+import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import type { JcTheme } from '../lib/use-theme.js'
-import type { JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
 import { ErrorBoundary } from './error-boundary.js'
 
 interface ShowcasePreviewProps {
   component: JcComponentMeta
   propValues: Record<string, unknown>
-  childrenText: string
-  childrenMode: 'text' | 'fixture'
-  childrenFixtureKey: string | null
+  childrenItems: ChildItem[]
   fixtures: JcResolvedFixture[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
@@ -49,9 +41,7 @@ interface ShowcasePreviewProps {
 export function ShowcasePreview({
   component,
   propValues,
-  childrenText,
-  childrenMode,
-  childrenFixtureKey,
+  childrenItems,
   fixtures,
   meta,
   fixtureOverrides,
@@ -78,9 +68,7 @@ export function ShowcasePreview({
   } = useResolvedComponent({
     component,
     propValues,
-    childrenText,
-    childrenMode,
-    childrenFixtureKey,
+    childrenItems,
     fixtures,
     meta,
     fixtureOverrides,
@@ -90,10 +78,12 @@ export function ShowcasePreview({
   })
 
   // Generate varied instances for multi-render (generated mode only)
+  const firstChildText =
+    childrenItems.length > 0 && childrenItems[0].type === 'text' ? childrenItems[0].value : ''
   const variedInstances = useMemo(() => {
     if (presetMode !== 'generated' || instanceCount <= 1) return null
-    return generateVariedInstances(component, fixtures, propValues, childrenText, instanceCount)
-  }, [presetMode, instanceCount, component, fixtures, propValues, childrenText])
+    return generateVariedInstances(component, fixtures, propValues, firstChildText, instanceCount)
+  }, [presetMode, instanceCount, component, fixtures, propValues, firstChildText])
 
   // Generate highlighted JSX tokens
   const colors = theme === 'light' ? C_LIGHT : C_DARK
@@ -102,9 +92,7 @@ export function ShowcasePreview({
       generateCodeTokens(
         component,
         propValues,
-        childrenText,
-        childrenMode,
-        childrenFixtureKey,
+        childrenItems,
         fixtures,
         colors,
         fixtureOverrides,
@@ -114,9 +102,7 @@ export function ShowcasePreview({
     [
       component,
       propValues,
-      childrenText,
-      childrenMode,
-      childrenFixtureKey,
+      childrenItems,
       fixtures,
       colors,
       fixtureOverrides,
@@ -130,23 +116,13 @@ export function ShowcasePreview({
       generateImportTokens(
         component,
         propValues,
-        childrenMode,
-        childrenFixtureKey,
+        childrenItems,
         fixtures,
         fixtureOverrides,
         meta,
         colors,
       ),
-    [
-      component,
-      propValues,
-      childrenMode,
-      childrenFixtureKey,
-      fixtures,
-      fixtureOverrides,
-      meta,
-      colors,
-    ],
+    [component, propValues, childrenItems, fixtures, fixtureOverrides, meta, colors],
   )
 
   const codeTokens = useMemo(() => {
@@ -215,7 +191,7 @@ export function ShowcasePreview({
                   transition: 'all 0.1s',
                 }}
               >
-                ×{n}
+                x{n}
               </button>
             ))}
           </div>
@@ -277,18 +253,14 @@ export function ShowcasePreview({
                   : undefined
                 return (
                   <ErrorBoundary key={idx} componentName={component.displayName}>
-                    {wrapElement(
-                      <LoadedComponent {...instProps}>{instChildren}</LoadedComponent>,
-                    )}
+                    {wrapElement(<LoadedComponent {...instProps}>{instChildren}</LoadedComponent>)}
                   </ErrorBoundary>
                 )
               })}
             </div>
           ) : (
             <ErrorBoundary componentName={component.displayName}>
-              {wrapElement(
-                <LoadedComponent {...cleanProps}>{resolvedChildren}</LoadedComponent>,
-              )}
+              {wrapElement(<LoadedComponent {...cleanProps}>{resolvedChildren}</LoadedComponent>)}
             </ErrorBoundary>
           )}
         </div>

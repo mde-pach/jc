@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { buildComponentFixtures, resolveFixturePlugins } from '../lib/fixtures.js'
@@ -177,110 +178,220 @@ export function ShowcaseApp({
         </header>
 
         {/* Main area */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Sidebar */}
-          <aside
-            style={{
-              width: '224px',
-              borderRight: '1px solid var(--jc-border)',
-              flexShrink: 0,
-              backgroundColor: 'var(--jc-muted)',
-            }}
-          >
-            <ShowcaseSidebar
-              components={state.filteredComponents}
-              selectedName={state.selectedName}
-              search={state.search}
-              onSearch={state.setSearch}
-              onSelect={state.selectComponent}
-            />
-          </aside>
+        <ResizableLayout
+          state={state}
+          meta={meta}
+          registry={registry}
+          wrapper={wrapper}
+          activeViewport={activeViewport}
+          theme={theme}
+          wrapperMetas={wrapperMetas}
+        />
+      </div>
+    </>
+  )
+}
 
-          {/* Preview + Controls split */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minWidth: 0 }}>
-            {/* Preview */}
-            <main
+// ── Resize handle ──────────────────────────────────────────
+
+const SIDEBAR_MIN = 224
+const CONTROLS_MIN = 256
+
+function ResizeHandle({
+  side,
+  onDrag,
+}: {
+  side: 'left' | 'right'
+  onDrag: (delta: number) => void
+}) {
+  const dragging = useRef(false)
+  const lastX = useRef(0)
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault()
+      dragging.current = true
+      lastX.current = e.clientX
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    [],
+  )
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging.current) return
+      const delta = e.clientX - lastX.current
+      lastX.current = e.clientX
+      onDrag(delta)
+    },
+    [onDrag],
+  )
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false
+  }, [])
+
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      style={{
+        width: '5px',
+        cursor: 'col-resize',
+        flexShrink: 0,
+        position: 'relative',
+        zIndex: 2,
+        ...(side === 'left'
+          ? { borderRight: '1px solid var(--jc-border)', marginRight: '-1px' }
+          : { borderLeft: '1px solid var(--jc-border)', marginLeft: '-1px' }),
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-2px -3px',
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Resizable three-column layout ──────────────────────────
+
+function ResizableLayout({
+  state,
+  meta,
+  registry,
+  wrapper,
+  activeViewport,
+  theme,
+  wrapperMetas,
+}: {
+  state: ReturnType<typeof useShowcaseState>
+  meta: JcMeta
+  // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
+  registry: Record<string, () => Promise<ComponentType<any>>>
+  wrapper?: ComponentType<{ children: ReactNode }>
+  activeViewport: (typeof VIEWPORTS)[number]
+  theme: 'light' | 'dark'
+  wrapperMetas: JcComponentMeta[]
+}) {
+  const [sidebarW, setSidebarW] = useState(SIDEBAR_MIN)
+  const [controlsW, setControlsW] = useState(CONTROLS_MIN)
+
+  const handleSidebarDrag = useCallback((delta: number) => {
+    setSidebarW((w) => Math.max(SIDEBAR_MIN, w + delta))
+  }, [])
+
+  const handleControlsDrag = useCallback((delta: number) => {
+    setControlsW((w) => Math.max(CONTROLS_MIN, w - delta))
+  }, [])
+
+  return (
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: `${sidebarW}px`,
+          flexShrink: 0,
+          backgroundColor: 'var(--jc-muted)',
+          overflow: 'hidden',
+        }}
+      >
+        <ShowcaseSidebar
+          components={state.filteredComponents}
+          selectedName={state.selectedName}
+          search={state.search}
+          onSearch={state.setSearch}
+          onSelect={state.selectComponent}
+        />
+      </aside>
+
+      <ResizeHandle side="left" onDrag={handleSidebarDrag} />
+
+      {/* Preview + Controls */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minWidth: 0 }}>
+        <main
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minWidth: 0,
+          }}
+        >
+          {state.ready && state.selectedComponent ? (
+            <ShowcasePreview
+              component={state.selectedComponent}
+              propValues={state.propValues}
+              childrenItems={state.childrenItems}
+              fixtures={state.resolvedFixtures}
+              meta={meta}
+              fixtureOverrides={state.fixtureOverrides}
+              wrapperPropsMap={state.wrapperPropsMap}
+              registry={registry}
+              wrapper={wrapper}
+              viewportWidth={activeViewport.width}
+              theme={theme}
+              instanceCount={state.instanceCount}
+              onInstanceCountChange={state.setInstanceCount}
+              presetMode={state.presetMode}
+            />
+          ) : (
+            <div
               style={{
                 flex: 1,
                 display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                minWidth: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0.3,
+                fontSize: '13px',
               }}
             >
-              {state.ready && state.selectedComponent ? (
-                <ShowcasePreview
-                  component={state.selectedComponent}
-                  propValues={state.propValues}
-                  childrenText={state.childrenText}
-                  childrenMode={state.childrenMode}
-                  childrenFixtureKey={state.childrenFixtureKey}
-                  fixtures={state.resolvedFixtures}
-                  meta={meta}
-                  fixtureOverrides={state.fixtureOverrides}
-                  wrapperPropsMap={state.wrapperPropsMap}
-                  registry={registry}
-                  wrapper={wrapper}
-                  viewportWidth={activeViewport.width}
-                  theme={theme}
-                  instanceCount={state.instanceCount}
-                  onInstanceCountChange={state.setInstanceCount}
-                  presetMode={state.presetMode}
-                />
-              ) : (
-                <div
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0.3,
-                    fontSize: '13px',
-                  }}
-                >
-                  Select a component
-                </div>
-              )}
-            </main>
+              Select a component
+            </div>
+          )}
+        </main>
 
-            {/* Controls panel */}
-            {state.ready && state.selectedComponent && (
-              <aside
-                style={{
-                  width: '256px',
-                  borderLeft: '1px solid var(--jc-border)',
-                  flexShrink: 0,
-                  backgroundColor: 'var(--jc-muted)',
-                }}
-              >
-                <ShowcaseControls
-                  component={state.selectedComponent}
-                  propValues={state.propValues}
-                  childrenText={state.childrenText}
-                  childrenMode={state.childrenMode}
-                  childrenFixtureKey={state.childrenFixtureKey}
-                  fixtures={state.resolvedFixtures}
-                  meta={meta}
-                  fixtureOverrides={state.fixtureOverrides}
-                  onPropChange={state.setPropValue}
-                  onChildrenChange={state.setChildrenText}
-                  onChildrenModeChange={state.setChildrenMode}
-                  onChildrenFixtureKeyChange={state.setChildrenFixtureKey}
-                  onFixturePropChange={state.setFixturePropValue}
-                  onFixtureChildrenChange={state.setFixtureChildrenText}
-                  wrapperMetas={wrapperMetas}
-                  wrapperPropsMap={state.wrapperPropsMap}
-                  onWrapperPropChange={state.setWrapperPropValue}
-                  presetMode={state.presetMode}
-                  examples={state.selectedComponent.examples ?? []}
-                  onPresetModeChange={state.setPresetMode}
-                  onReset={state.resetProps}
-                />
-              </aside>
-            )}
-          </div>
-        </div>
+        {/* Controls panel */}
+        {state.ready && state.selectedComponent && (
+          <>
+            <ResizeHandle side="right" onDrag={handleControlsDrag} />
+            <aside
+              style={{
+                width: `${controlsW}px`,
+                flexShrink: 0,
+                backgroundColor: 'var(--jc-muted)',
+                overflow: 'hidden',
+              }}
+            >
+              <ShowcaseControls
+                component={state.selectedComponent}
+                propValues={state.propValues}
+                childrenItems={state.childrenItems}
+                fixtures={state.resolvedFixtures}
+                meta={meta}
+                fixtureOverrides={state.fixtureOverrides}
+                onPropChange={state.setPropValue}
+                onAddChildItem={state.addChildItem}
+                onRemoveChildItem={state.removeChildItem}
+                onUpdateChildItem={state.updateChildItem}
+                onFixturePropChange={state.setFixturePropValue}
+                onFixtureChildrenChange={state.setFixtureChildrenText}
+                wrapperMetas={wrapperMetas}
+                wrapperPropsMap={state.wrapperPropsMap}
+                onWrapperPropChange={state.setWrapperPropValue}
+                presetMode={state.presetMode}
+                examples={state.selectedComponent.examples ?? []}
+                onPresetModeChange={state.setPresetMode}
+                onReset={state.resetProps}
+              />
+            </aside>
+          </>
+        )}
       </div>
-    </>
+    </div>
   )
 }

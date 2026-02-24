@@ -4,7 +4,7 @@ import {
   formatArrayTokens,
   generateCodeTokens,
 } from '../lib/code-tokens.js'
-import type { JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -40,6 +40,16 @@ const fixtures: JcResolvedFixture[] = [
   },
 ]
 
+/** Shorthand for a text child item */
+function textChild(value: string): ChildItem[] {
+  return value ? [{ type: 'text', value }] : []
+}
+
+/** Shorthand for a fixture child item */
+function fixtureChild(key: string): ChildItem[] {
+  return key ? [{ type: 'fixture', value: key }] : []
+}
+
 /** Join token texts into a single string for easy assertion */
 function tokenText(tokens: { text: string }[]): string {
   return tokens.map((t) => t.text).join('')
@@ -54,7 +64,7 @@ function tokensWithColor(tokens: { text: string; color: string }[], color: strin
 
 describe('generateCodeTokens', () => {
   it('renders self-closing tag for no props no children', () => {
-    const tokens = generateCodeTokens(makeComponent(), {}, '', 'text', null, [])
+    const tokens = generateCodeTokens(makeComponent(), {}, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button />')
   })
@@ -72,7 +82,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { variant: 'primary' }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { variant: 'primary' }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button variant="primary" />')
   })
@@ -89,7 +99,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { disabled: true }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { disabled: true }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button disabled />')
   })
@@ -106,7 +116,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { disabled: false }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { disabled: false }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button />')
   })
@@ -123,7 +133,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { count: 42 }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { count: 42 }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button count={42} />')
   })
@@ -141,21 +151,21 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { icon: 'lucide/star' }, '', 'text', null, fixtures)
+    const tokens = generateCodeTokens(comp, { icon: 'lucide/star' }, [], fixtures)
     const text = tokenText(tokens)
     expect(text).toBe('<Button icon={<Star />} />')
   })
 
   it('renders children in text mode', () => {
     const comp = makeComponent({ acceptsChildren: true })
-    const tokens = generateCodeTokens(comp, {}, 'Click me', 'text', null, [])
+    const tokens = generateCodeTokens(comp, {}, textChild('Click me'), [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button>Click me</Button>')
   })
 
   it('renders children in fixture mode', () => {
     const comp = makeComponent({ acceptsChildren: true })
-    const tokens = generateCodeTokens(comp, {}, '', 'fixture', 'custom/badge', fixtures)
+    const tokens = generateCodeTokens(comp, {}, fixtureChild('custom/badge'), fixtures)
     const text = tokenText(tokens)
     expect(text).toBe('<Button><StatusBadge /></Button>')
     // Fixture children should use component color
@@ -182,14 +192,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(
-      comp,
-      { variant: 'primary', size: 'md' },
-      '',
-      'text',
-      null,
-      [],
-    )
+    const tokens = generateCodeTokens(comp, { variant: 'primary', size: 'md' }, [], [])
     const text = tokenText(tokens)
     expect(text).toContain('\n')
     expect(text).toContain('  variant="primary"')
@@ -209,7 +212,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { variant: 'primary' }, 'Click me', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { variant: 'primary' }, textChild('Click me'), [])
     const text = tokenText(tokens)
     expect(text).toContain('\n')
     expect(text).toContain('  variant="primary"')
@@ -224,7 +227,7 @@ describe('generateCodeTokens', () => {
         b: { name: 'b', type: 'string', required: false, description: '', isChildren: false },
       },
     })
-    const tokens = generateCodeTokens(comp, { a: 'x', b: 'y' }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { a: 'x', b: 'y' }, [], [])
     const text = tokenText(tokens)
     expect(text).toContain('/>')
     expect(text).not.toContain('</Button>')
@@ -238,7 +241,7 @@ describe('generateCodeTokens', () => {
         c: { name: 'c', type: 'string', required: false, description: '', isChildren: false },
       },
     })
-    const tokens = generateCodeTokens(comp, { a: undefined, b: null, c: '' }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { a: undefined, b: null, c: '' }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button />')
   })
@@ -255,7 +258,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { items: [] }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { items: [] }, [], [])
     const text = tokenText(tokens)
     expect(text).toBe('<Button />')
   })
@@ -272,7 +275,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { tags: ['a', 'b'] }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { tags: ['a', 'b'] }, [], [])
     const text = tokenText(tokens)
     expect(text).toContain('tags={["a", "b"]}')
   })
@@ -289,7 +292,7 @@ describe('generateCodeTokens', () => {
         },
       },
     })
-    const tokens = generateCodeTokens(comp, { data: { x: 1 } }, '', 'text', null, [])
+    const tokens = generateCodeTokens(comp, { data: { x: 1 } }, [], [])
     const text = tokenText(tokens)
     expect(text).toContain('data={{"x":1}}')
   })
@@ -472,9 +475,7 @@ describe('generateCodeTokens with fixture overrides', () => {
     const tokens = generateCodeTokens(
       comp,
       { trigger: 'components/Button' },
-      '',
-      'text',
-      null,
+      [],
       componentFixtures,
       undefined,
       overrides,
@@ -487,14 +488,12 @@ describe('generateCodeTokens with fixture overrides', () => {
   it('renders children component fixture with overrides as full JSX', () => {
     const comp = makeComponent({ acceptsChildren: true })
     const overrides = {
-      children: { props: { label: 'Submit' }, childrenText: 'OK' },
+      'children:0': { props: { label: 'Submit' }, childrenText: 'OK' },
     }
     const tokens = generateCodeTokens(
       comp,
       {},
-      '',
-      'fixture',
-      'components/Button',
+      fixtureChild('components/Button'),
       componentFixtures,
       undefined,
       overrides,

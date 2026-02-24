@@ -5,3 +5,4 @@ bun.lockb
 logs/
 next-env.d.ts
 package-lock.json
+.vercel

@@ -127,7 +127,7 @@ export function ShowcaseSidebar({
                         style={{ fontSize: '9px', opacity: 0.35 }}
                         title={`${comp.usageCount.direct} direct + ${comp.usageCount.indirect} indirect usages`}
                       >
-                        ×{comp.usageCount.total}
+                        x{comp.usageCount.total}
                       </span>
                     )}
                     {propCount > 0 && (

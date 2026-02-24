@@ -5,7 +5,7 @@
  * Supports light and dark color palettes.
  */
 
-import type { JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
 import { resolveControlType } from './faker-map.js'
 import { fixtureToCodeString } from './fixtures.js'
 import type { FixtureOverride } from './use-showcase-state.js'
@@ -36,8 +36,7 @@ function applyPathAlias(filePath: string, pathAlias: Record<string, string>): st
 export function generateImportTokens(
   component: JcComponentMeta,
   props: Record<string, unknown>,
-  childrenMode: 'text' | 'fixture',
-  childrenFixtureKey: string | null,
+  childrenItems: ChildItem[],
   fixtures: JcResolvedFixture[],
   fixtureOverrides: Record<string, FixtureOverride>,
   meta: JcMeta,
@@ -109,19 +108,15 @@ export function generateImportTokens(
     }
   }
 
-  // Children fixture
-  if (childrenMode === 'fixture' && childrenFixtureKey) {
-    collectFixtureImport(childrenFixtureKey)
-    const childOverride = fixtureOverrides.children
-    if (childOverride && childrenFixtureKey.startsWith('components/')) {
-      collectOverrideImports(
-        childOverride,
-        childrenFixtureKey,
-        meta,
-        fixtures,
-        pathAlias,
-        addImport,
-      )
+  // Children fixture imports
+  for (let i = 0; i < childrenItems.length; i++) {
+    const item = childrenItems[i]
+    if (item.type === 'fixture' && item.value) {
+      collectFixtureImport(item.value)
+      const childOverride = fixtureOverrides[`children:${i}`]
+      if (childOverride && item.value.startsWith('components/')) {
+        collectOverrideImports(childOverride, item.value, meta, fixtures, pathAlias, addImport)
+      }
     }
   }
 
@@ -205,9 +200,7 @@ export type ColorPalette = Record<keyof typeof C_DARK, string>
 export function generateCodeTokens(
   component: JcComponentMeta,
   props: Record<string, unknown>,
-  children: string,
-  childrenMode: 'text' | 'fixture',
-  childrenFixtureKey: string | null,
+  childrenItems: ChildItem[],
   fixtures: JcResolvedFixture[],
   C: ColorPalette = C_DARK,
   fixtureOverrides: Record<string, FixtureOverride> = {},
@@ -300,45 +293,36 @@ export function generateCodeTokens(
     propTokenGroups.push(group)
   }
 
-  // Children
-  let childrenStr = ''
-  let childrenTokens: CodeToken[] | null = null
+  // Children — build token groups for each child item
+  const childTokenGroups: CodeToken[][] = []
   if (component.acceptsChildren) {
-    if (childrenMode === 'fixture' && childrenFixtureKey) {
-      // Component fixtures with overrides → full JSX tokens
-      const childOverride = fixtureOverrides.children
-      if (childrenFixtureKey.startsWith('components/') && childOverride && meta) {
-        childrenTokens = componentFixtureToCodeTokens(
-          childrenFixtureKey,
-          childOverride,
-          meta,
-          fixtures,
-          C,
-        )
-      } else {
-        childrenStr = fixtureToCodeString(childrenFixtureKey, fixtures)
+    for (let i = 0; i < childrenItems.length; i++) {
+      const item = childrenItems[i]
+      if (item.type === 'fixture' && item.value) {
+        const childOverride = fixtureOverrides[`children:${i}`]
+        if (item.value.startsWith('components/') && childOverride && meta) {
+          childTokenGroups.push(
+            componentFixtureToCodeTokens(item.value, childOverride, meta, fixtures, C),
+          )
+        } else {
+          const codeStr = fixtureToCodeString(item.value, fixtures)
+          childTokenGroups.push([{ text: codeStr, color: C.component }])
+        }
+      } else if (item.value) {
+        childTokenGroups.push([{ text: item.value, color: C.text }])
       }
-    } else if (children) {
-      childrenStr = children
     }
   }
-  const hasChildren = childrenStr || childrenTokens
+  const hasChildren = childTokenGroups.length > 0
 
   // Decide layout: multiline if >1 prop or has children
   const multiline = propTokenGroups.length > 1 || (propTokenGroups.length > 0 && hasChildren)
 
-  /** Append children tokens (either inline text or sub-component JSX) */
+  /** Append children tokens */
   const pushChildrenTokens = (indent: string) => {
-    if (childrenTokens) {
+    for (const group of childTokenGroups) {
       tokens.push({ text: indent, color: '' })
-      tokens.push(...childrenTokens)
-    } else if (childrenStr) {
-      tokens.push({ text: indent, color: '' })
-      if (childrenMode === 'fixture' && childrenFixtureKey) {
-        tokens.push({ text: childrenStr, color: C.component })
-      } else {
-        tokens.push({ text: childrenStr, color: C.text })
-      }
+      tokens.push(...group)
     }
   }
 

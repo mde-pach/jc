@@ -66,11 +66,33 @@ describe('resolveControlType', () => {
   it('returns array for T[] types', () => {
     expect(resolveControlType(makeProp({ type: 'string[]' }))).toBe('array')
     expect(resolveControlType(makeProp({ type: 'LucideIcon[]' }))).toBe('array')
+    expect(resolveControlType(makeProp({ type: 'number[]' }))).toBe('array')
+  })
+
+  it('returns array for structured object array types', () => {
+    expect(resolveControlType(makeProp({ type: '{ label: string; icon: ReactNode; href: string }[]' }))).toBe('array')
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe('array')
+  })
+
+  it('returns json for Record types', () => {
+    expect(resolveControlType(makeProp({ type: 'Record<string, string>' }))).toBe('json')
+    expect(resolveControlType(makeProp({ type: 'Record<string, unknown>' }))).toBe('json')
+  })
+
+  it('returns json for inline object types', () => {
+    expect(resolveControlType(makeProp({ type: '{ theme: string; layout: string }' }))).toBe('json')
   })
 
   it('returns component for ReactElement type', () => {
     expect(resolveControlType(makeProp({ type: 'ReactElement' }))).toBe('component')
     expect(resolveControlType(makeProp({ type: 'JSX.Element' }))).toBe('component')
+  })
+
+  it('does not return component for structured types containing ReactNode', () => {
+    // An object array whose fields happen to include ReactNode should be array, not component
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe('array')
+    // An object containing ReactNode should be json, not component
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }' }))).toBe('json')
   })
 })
 

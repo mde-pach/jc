@@ -374,7 +374,7 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
 
           props[propName] = {
             name: propName,
-            type: boolEnum ? 'boolean' : simplifyType(rawType),
+            type: boolEnum ? 'boolean' : (astProp?.simplifiedType ?? simplifyType(rawType)),
             rawType,
             values: boolEnum ? undefined : values?.length ? values : undefined,
             required: propInfo.required,

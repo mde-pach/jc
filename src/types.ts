@@ -137,6 +137,13 @@ export interface JcResolvedFixture extends JcFixture {
   qualifiedKey: string
 }
 
+/** A single children item — text content or a fixture reference */
+export interface ChildItem {
+  type: 'text' | 'fixture'
+  /** Plain text when type='text', fixture qualified key when type='fixture' */
+  value: string
+}
+
 /** User-provided configuration */
 export interface JcConfig {
   /** Glob pattern for component files (relative to project root) */

@@ -4,6 +4,9 @@
  * Expandable nested prop editor for component fixtures.
  * When a component fixture (components/*) is selected for a node slot,
  * this renders editable controls for the fixture component's own props.
+ *
+ * Recursive: fixture props that are themselves component fixtures get their
+ * own nested ComponentFixtureEditor, allowing arbitrary depth.
  */
 
 import { useState } from 'react'
@@ -84,7 +87,7 @@ export function ComponentFixtureEditor({
             transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
           }}
         >
-          \u25b6
+          {'\u25b6'}
         </span>
       </button>
 
@@ -112,7 +115,11 @@ export function ComponentFixtureEditor({
           {editableProps.map((prop) => {
             const ct = resolveControlType(prop)
             const kindFixtures =
-              ct === 'component' ? getFixturesForKind(fixtures, prop.componentKind) : undefined
+              ct === 'component'
+                ? getFixturesForKind(fixtures, prop.componentKind)
+                : ct === 'array'
+                  ? fixtures
+                  : undefined
             return (
               <ShowcaseField
                 key={prop.name}
@@ -124,6 +131,10 @@ export function ComponentFixtureEditor({
                 componentKind={prop.componentKind}
                 fixtures={kindFixtures}
                 propMeta={prop}
+                meta={meta}
+                fixtureOverrides={fixtureOverrides}
+                onFixturePropChange={onFixturePropChange}
+                onFixtureChildrenChange={onFixtureChildrenChange}
                 onChange={(v) => onFixturePropChange(slotKey, prop.name, v)}
               />
             )

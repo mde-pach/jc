@@ -133,7 +133,17 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
   if (prop.defaultValue !== undefined) {
     if (prop.type === 'boolean') return prop.defaultValue === 'true'
     if (prop.type === 'number') return Number(prop.defaultValue)
-    return prop.defaultValue
+    // Array types: try to parse JSON defaultValue, fall through to generation if not valid
+    if (prop.type.endsWith('[]')) {
+      try {
+        const parsed = JSON.parse(prop.defaultValue)
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // Not valid JSON — fall through to array generation below
+      }
+    } else {
+      return prop.defaultValue
+    }
   }
 
   // Optional enum props start unselected; required ones pick the first value

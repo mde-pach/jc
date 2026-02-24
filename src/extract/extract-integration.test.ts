@@ -125,4 +125,66 @@ describe('extract (integration)', () => {
     expect(btn!.tags?.example).toHaveLength(1)
     expect(btn!.wrapperComponents).toBeUndefined()
   })
+
+  // ── Complex type detection ───────────────────────────────────
+
+  describe('complex type detection (arrays, objects, records)', () => {
+    it('extracts string[] as array type, not enum', () => {
+      const meta = extract(projectRoot, config)
+      const card = meta.components.find((c) => c.displayName === 'StatCard')!
+      expect(card).toBeDefined()
+      expect(card.props.tags).toBeDefined()
+      expect(card.props.tags.type).toBe('string[]')
+    })
+
+    it('extracts number[] as array type', () => {
+      const meta = extract(projectRoot, config)
+      const card = meta.components.find((c) => c.displayName === 'StatCard')!
+      expect(card.props.scores).toBeDefined()
+      expect(card.props.scores.type).toBe('number[]')
+    })
+
+    it('extracts object type for inline object props', () => {
+      const meta = extract(projectRoot, config)
+      const panel = meta.components.find((c) => c.displayName === 'ConfigPanel')!
+      expect(panel).toBeDefined()
+      expect(panel.props.config).toBeDefined()
+      // Should contain object structure, not "enum"
+      expect(panel.props.config.type).toMatch(/\{/)
+      expect(panel.props.config.type).not.toBe('enum')
+    })
+
+    it('extracts structured array type for object array props', () => {
+      const meta = extract(projectRoot, config)
+      const panel = meta.components.find((c) => c.displayName === 'ConfigPanel')!
+      expect(panel.props.menuItems).toBeDefined()
+      // Should end with [] and contain structure
+      expect(panel.props.menuItems.type).toMatch(/\[\]$/)
+      expect(panel.props.menuItems.type).toMatch(/label/)
+    })
+
+    it('extracts Record type for mapped props', () => {
+      const meta = extract(projectRoot, config)
+      const panel = meta.components.find((c) => c.displayName === 'ConfigPanel')!
+      expect(panel.props.labels).toBeDefined()
+      expect(panel.props.labels.type).toMatch(/Record/)
+    })
+
+    it('preserves simple types correctly alongside complex ones', () => {
+      const meta = extract(projectRoot, config)
+      const card = meta.components.find((c) => c.displayName === 'StatCard')!
+      expect(card.props.label.type).toBe('string')
+      expect(card.props.value.type).toBe('number')
+      expect(card.props.highlighted.type).toBe('boolean')
+    })
+
+    it('preserves union type values for enum-like props', () => {
+      const meta = extract(projectRoot, config)
+      const card = meta.components.find((c) => c.displayName === 'StatCard')!
+      expect(card.props.trend).toBeDefined()
+      expect(card.props.trend.values).toContain('up')
+      expect(card.props.trend.values).toContain('down')
+      expect(card.props.trend.values).toContain('neutral')
+    })
+  })
 })

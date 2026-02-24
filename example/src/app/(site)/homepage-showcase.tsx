@@ -40,9 +40,7 @@ export function HomepageShowcase({ componentName }: HomepageShowcaseProps) {
                 <ComponentRender
                   component={state.selectedComponent}
                   propValues={state.propValues}
-                  childrenText={state.childrenText}
-                  childrenMode={state.childrenMode}
-                  childrenFixtureKey={state.childrenFixtureKey}
+                  childrenItems={state.childrenItems}
                   fixtures={state.resolvedFixtures}
                   meta={typedMeta}
                   fixtureOverrides={state.fixtureOverrides}
@@ -62,16 +60,14 @@ export function HomepageShowcase({ componentName }: HomepageShowcaseProps) {
                 <ShowcaseControls
                   component={state.selectedComponent}
                   propValues={state.propValues}
-                  childrenText={state.childrenText}
-                  childrenMode={state.childrenMode}
-                  childrenFixtureKey={state.childrenFixtureKey}
+                  childrenItems={state.childrenItems}
                   fixtures={state.resolvedFixtures}
                   meta={typedMeta}
                   fixtureOverrides={state.fixtureOverrides}
                   onPropChange={state.setPropValue}
-                  onChildrenChange={state.setChildrenText}
-                  onChildrenModeChange={state.setChildrenMode}
-                  onChildrenFixtureKeyChange={state.setChildrenFixtureKey}
+                  onAddChildItem={state.addChildItem}
+                  onRemoveChildItem={state.removeChildItem}
+                  onUpdateChildItem={state.updateChildItem}
                   onFixturePropChange={state.setFixturePropValue}
                   onFixtureChildrenChange={state.setFixtureChildrenText}
                   wrapperMetas={wrapperMetas}

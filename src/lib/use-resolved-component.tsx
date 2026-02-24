@@ -8,17 +8,15 @@ import {
   useMemo,
   useState,
 } from 'react'
-import type { FixtureOverride } from './use-showcase-state.js'
-import type { JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
-import { resolveControlType, getArrayItemType } from './faker-map.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import { getArrayItemType, resolveControlType } from './faker-map.js'
 import { renderComponentFixture, resolveFixtureValue } from './fixtures.js'
+import type { FixtureOverride } from './use-showcase-state.js'
 
 interface UseResolvedComponentOptions {
   component: JcComponentMeta
   propValues: Record<string, unknown>
-  childrenText: string
-  childrenMode: 'text' | 'fixture'
-  childrenFixtureKey: string | null
+  childrenItems: ChildItem[]
   fixtures: JcResolvedFixture[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
@@ -32,9 +30,7 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
   const {
     component,
     propValues,
-    childrenText,
-    childrenMode,
-    childrenFixtureKey,
+    childrenItems,
     fixtures,
     meta,
     fixtureOverrides,
@@ -153,6 +149,25 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
           continue
         }
 
+        // Defensive guard: ensure array props always receive arrays
+        if (controlType === 'array' && propMeta) {
+          if (!Array.isArray(value)) {
+            // Try to parse string representations of arrays (e.g. from defaultValue)
+            if (typeof value === 'string') {
+              try {
+                const parsed = JSON.parse(value)
+                if (Array.isArray(parsed)) {
+                  result[key] = parsed
+                  continue
+                }
+              } catch {
+                // Not valid JSON — skip this prop
+              }
+            }
+            continue // Skip non-array values for array props
+          }
+        }
+
         if (controlType === 'array' && Array.isArray(value) && propMeta) {
           const itemInfo = getArrayItemType(propMeta)
           if (itemInfo?.isComponent) {
@@ -195,30 +210,33 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
 
   // ── Resolve children ─────────────────────────────────────────────
   const resolvedChildren = useMemo(() => {
-    if (!component.acceptsChildren) return undefined
-    if (childrenMode === 'fixture' && childrenFixtureKey) {
-      if (childrenFixtureKey.startsWith('components/')) {
-        return renderComponentFixture(
-          childrenFixtureKey,
-          fixtureOverrides.children,
-          meta,
-          registry,
-          fixtures,
-        ) as ReactNode
+    if (!component.acceptsChildren || childrenItems.length === 0) return undefined
+
+    const resolveItem = (item: ChildItem, index: number): ReactNode => {
+      if (item.type === 'fixture' && item.value) {
+        if (item.value.startsWith('components/')) {
+          const slotKey = `children:${index}`
+          return renderComponentFixture(
+            item.value,
+            fixtureOverrides[slotKey],
+            meta,
+            registry,
+            fixtures,
+          ) as ReactNode
+        }
+        return resolveFixtureValue(item.value, fixtures) as ReactNode
       }
-      return resolveFixtureValue(childrenFixtureKey, fixtures) as ReactNode
+      return item.value || undefined
     }
-    return childrenText || undefined
-  }, [
-    component.acceptsChildren,
-    childrenMode,
-    childrenFixtureKey,
-    childrenText,
-    fixtures,
-    fixtureOverrides,
-    meta,
-    registry,
-  ])
+
+    if (childrenItems.length === 1) {
+      return resolveItem(childrenItems[0], 0)
+    }
+
+    // Multiple children: resolve each and return as fragment array
+    const resolved = childrenItems.map((item, i) => resolveItem(item, i)).filter(Boolean)
+    return resolved.length > 0 ? resolved : undefined
+  }, [component.acceptsChildren, childrenItems, fixtures, fixtureOverrides, meta, registry])
 
   // ── Wrap rendered element ────────────────────────────────────────
   const wrapElement = useCallback(

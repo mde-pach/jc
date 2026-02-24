@@ -2,12 +2,13 @@
 
 /**
  * Central state hook for the showcase app.
- * Manages component selection, prop values, children mode (text vs fixture),
+ * Manages component selection, prop values, children items (multi-child support),
  * fixture resolution from host-provided plugins, and URL sync.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
+  ChildItem,
   JcComponentMeta,
   JcExamplePreset,
   JcFixturePlugin,
@@ -17,6 +18,7 @@ import type {
 import { generateDefaults, generateFakeChildren } from './faker-map.js'
 import { resolveFixturePlugins } from './fixtures.js'
 import {
+  deserializeChildrenItems,
   deserializeState,
   getComponentFromUrl,
   serializeState,
@@ -26,16 +28,14 @@ import {
 
 // ── Helpers ─────────────────────────────────────────────────────
 
-/** Reset prop values, children text, and children mode to defaults for a component */
+/** Reset prop values and children items to defaults for a component */
 function resetToDefaults(
   comp: JcComponentMeta,
   fixtures: JcResolvedFixture[],
   allComponents?: JcComponentMeta[],
 ): {
   propValues: Record<string, unknown>
-  childrenText: string
-  childrenMode: 'text' | 'fixture'
-  childrenFixtureKey: string | null
+  childrenItems: ChildItem[]
   wrapperPropsMap: Record<string, Record<string, unknown>>
 } {
   // Compute wrapper props map: faker defaults + @example-detected defaults on top
@@ -54,11 +54,13 @@ function resetToDefaults(
     }
   }
 
+  const childrenItems: ChildItem[] = comp.acceptsChildren
+    ? [{ type: 'text', value: generateFakeChildren(comp.displayName) }]
+    : []
+
   return {
     propValues: generateDefaults(comp, fixtures),
-    childrenText: comp.acceptsChildren ? generateFakeChildren(comp.displayName) : '',
-    childrenMode: 'text',
-    childrenFixtureKey: null,
+    childrenItems,
     wrapperPropsMap,
   }
 }
@@ -74,7 +76,7 @@ function applyExamplePreset(
   allComponents?: JcComponentMeta[],
 ): {
   propValues: Record<string, unknown>
-  childrenText: string
+  childrenItems: ChildItem[]
   wrapperPropsMap: Record<string, Record<string, unknown>>
 } {
   const base = resetToDefaults(comp, fixtures, allComponents)
@@ -99,15 +101,27 @@ function applyExamplePreset(
         (f) => f.label === strVal || f.label.toLowerCase() === strVal.toLowerCase(),
       )
       base.propValues[key] = byLabel ? byLabel.qualifiedKey : strVal
+    } else if (propMeta.type.endsWith('[]')) {
+      // Array types: try to parse as JSON array
+      try {
+        const parsed = JSON.parse(strVal)
+        if (Array.isArray(parsed)) {
+          base.propValues[key] = parsed
+        } else {
+          base.propValues[key] = strVal
+        }
+      } catch {
+        base.propValues[key] = strVal
+      }
     } else {
       // String, enum, etc. — use the raw string value
       base.propValues[key] = strVal
     }
   }
 
-  // Override children text if preset has it
+  // Override children if preset has it
   if (preset.childrenText) {
-    base.childrenText = preset.childrenText
+    base.childrenItems = [{ type: 'text', value: preset.childrenText }]
   }
 
   // Merge wrapper props
@@ -120,7 +134,7 @@ function applyExamplePreset(
 
   return {
     propValues: base.propValues,
-    childrenText: base.childrenText,
+    childrenItems: base.childrenItems,
     wrapperPropsMap: base.wrapperPropsMap,
   }
 }
@@ -143,11 +157,10 @@ export interface ShowcaseState {
   search: string
   filteredComponents: JcComponentMeta[]
   propValues: Record<string, unknown>
-  childrenText: string
-  childrenMode: 'text' | 'fixture'
-  childrenFixtureKey: string | null
+  /** Children items — each can be text or a fixture reference */
+  childrenItems: ChildItem[]
   resolvedFixtures: JcResolvedFixture[]
-  /** Per-slot overrides for component fixture props (keyed by "prop:<name>" or "children") */
+  /** Per-slot overrides for component fixture props (keyed by "prop:<name>" or "children:<index>") */
   fixtureOverrides: Record<string, FixtureOverride>
   /** Live wrapper component prop values keyed by wrapper displayName */
   wrapperPropsMap: Record<string, Record<string, unknown>>
@@ -158,9 +171,9 @@ export interface ShowcaseState {
   selectComponent: (name: string) => void
   setSearch: (search: string) => void
   setPropValue: (propName: string, value: unknown) => void
-  setChildrenText: (text: string) => void
-  setChildrenMode: (mode: 'text' | 'fixture') => void
-  setChildrenFixtureKey: (key: string | null) => void
+  addChildItem: (item?: ChildItem) => void
+  removeChildItem: (index: number) => void
+  updateChildItem: (index: number, item: ChildItem) => void
   setFixturePropValue: (slotKey: string, propName: string, value: unknown) => void
   setFixtureChildrenText: (slotKey: string, text: string) => void
   setWrapperPropValue: (wrapperName: string, propName: string, value: unknown) => void
@@ -196,9 +209,7 @@ export function useShowcaseState(
   )
   const [search, setSearch] = useState('')
   const [propValues, setPropValues] = useState<Record<string, unknown>>({})
-  const [childrenText, setChildrenText] = useState('')
-  const [childrenMode, setChildrenMode] = useState<'text' | 'fixture'>('text')
-  const [childrenFixtureKey, setChildrenFixtureKey] = useState<string | null>(null)
+  const [childrenItems, setChildrenItems] = useState<ChildItem[]>([])
   const [fixtureOverrides, setFixtureOverrides] = useState<Record<string, FixtureOverride>>({})
   const [wrapperPropsMap, setWrapperPropsMap] = useState<Record<string, Record<string, unknown>>>(
     {},
@@ -208,7 +219,7 @@ export function useShowcaseState(
   const [initialized, setInitialized] = useState(false)
   const defaultsRef = useRef<{
     propValues: Record<string, unknown>
-    childrenText: string
+    childrenItems: ChildItem[]
     wrapperPropsMap: Record<string, Record<string, unknown>>
   } | null>(null)
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -250,7 +261,7 @@ export function useShowcaseState(
       const defaults = resetToDefaults(target, resolvedFixtures, meta.components)
       defaultsRef.current = {
         propValues: defaults.propValues,
-        childrenText: defaults.childrenText,
+        childrenItems: defaults.childrenItems,
         wrapperPropsMap: defaults.wrapperPropsMap,
       }
 
@@ -258,9 +269,8 @@ export function useShowcaseState(
       const saved = syncUrl ? deserializeState() : null
       if (saved) {
         setPropValues({ ...defaults.propValues, ...(saved.p ?? {}) })
-        setChildrenText(saved.ct ?? defaults.childrenText)
-        if (saved.cm === 'fixture') setChildrenMode('fixture')
-        if (saved.cf) setChildrenFixtureKey(saved.cf)
+        const restoredChildren = deserializeChildrenItems(saved)
+        setChildrenItems(restoredChildren ?? defaults.childrenItems)
         const mergedWrappers = { ...defaults.wrapperPropsMap }
         if (saved.w) {
           for (const [wName, wDiff] of Object.entries(saved.w)) {
@@ -277,7 +287,7 @@ export function useShowcaseState(
         }
       } else {
         setPropValues(defaults.propValues)
-        setChildrenText(defaults.childrenText)
+        setChildrenItems(defaults.childrenItems)
         setWrapperPropsMap(defaults.wrapperPropsMap)
       }
     }
@@ -314,9 +324,7 @@ export function useShowcaseState(
     syncTimerRef.current = setTimeout(() => {
       const encoded = serializeState(
         propValues,
-        childrenText,
-        childrenMode,
-        childrenFixtureKey,
+        childrenItems,
         wrapperPropsMap,
         fixtureOverrides,
         defaultsRef.current!,
@@ -326,16 +334,7 @@ export function useShowcaseState(
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
-  }, [
-    syncUrl,
-    initialized,
-    propValues,
-    childrenText,
-    childrenMode,
-    childrenFixtureKey,
-    wrapperPropsMap,
-    fixtureOverrides,
-  ])
+  }, [syncUrl, initialized, propValues, childrenItems, wrapperPropsMap, fixtureOverrides])
 
   const selectComponent = useCallback(
     (name: string) => {
@@ -350,13 +349,11 @@ export function useShowcaseState(
         const defaults = resetToDefaults(comp, resolvedFixtures, meta.components)
         defaultsRef.current = {
           propValues: defaults.propValues,
-          childrenText: defaults.childrenText,
+          childrenItems: defaults.childrenItems,
           wrapperPropsMap: defaults.wrapperPropsMap,
         }
         setPropValues(defaults.propValues)
-        setChildrenText(defaults.childrenText)
-        setChildrenMode(defaults.childrenMode)
-        setChildrenFixtureKey(defaults.childrenFixtureKey)
+        setChildrenItems(defaults.childrenItems)
         setWrapperPropsMap(defaults.wrapperPropsMap)
       }
     },
@@ -384,6 +381,69 @@ export function useShowcaseState(
     [initFixtureOverrides],
   )
 
+  /** Add a new child item (defaults to empty text) */
+  const addChildItem = useCallback(
+    (item?: ChildItem) => {
+      const newItem = item ?? { type: 'text' as const, value: '' }
+      setChildrenItems((prev) => {
+        const next = [...prev, newItem]
+        // Auto-init fixture overrides for component fixture children
+        if (newItem.type === 'fixture' && newItem.value.startsWith('components/')) {
+          const compName = newItem.value.slice('components/'.length)
+          const slotKey = `children:${prev.length}`
+          initFixtureOverrides(slotKey, compName)
+        }
+        return next
+      })
+    },
+    [initFixtureOverrides],
+  )
+
+  /** Remove a child item by index */
+  const removeChildItem = useCallback((index: number) => {
+    setChildrenItems((prev) => prev.filter((_, i) => i !== index))
+    // Clean up fixture overrides for removed and shifted indices
+    setFixtureOverrides((prev) => {
+      const next = { ...prev }
+      delete next[`children:${index}`]
+      // Shift overrides for items after the removed one
+      const keys = Object.keys(next).filter((k) => k.startsWith('children:'))
+      for (const key of keys) {
+        const idx = Number.parseInt(key.split(':')[1], 10)
+        if (idx > index) {
+          next[`children:${idx - 1}`] = next[key]
+          delete next[key]
+        }
+      }
+      return next
+    })
+  }, [])
+
+  /** Update a child item at a specific index */
+  const updateChildItem = useCallback(
+    (index: number, item: ChildItem) => {
+      setChildrenItems((prev) => {
+        const next = [...prev]
+        next[index] = item
+        return next
+      })
+      // Handle fixture override lifecycle
+      const slotKey = `children:${index}`
+      if (item.type === 'fixture' && item.value.startsWith('components/')) {
+        const compName = item.value.slice('components/'.length)
+        initFixtureOverrides(slotKey, compName)
+      } else {
+        setFixtureOverrides((prev) => {
+          if (!(slotKey in prev)) return prev
+          const next = { ...prev }
+          delete next[slotKey]
+          return next
+        })
+      }
+    },
+    [initFixtureOverrides],
+  )
+
   const setPresetMode = useCallback(
     (mode: 'generated' | number) => {
       setPresetModeState(mode)
@@ -397,13 +457,11 @@ export function useShowcaseState(
         const defaults = resetToDefaults(selectedComponent, resolvedFixtures, meta.components)
         defaultsRef.current = {
           propValues: defaults.propValues,
-          childrenText: defaults.childrenText,
+          childrenItems: defaults.childrenItems,
           wrapperPropsMap: defaults.wrapperPropsMap,
         }
         setPropValues(defaults.propValues)
-        setChildrenText(defaults.childrenText)
-        setChildrenMode(defaults.childrenMode)
-        setChildrenFixtureKey(defaults.childrenFixtureKey)
+        setChildrenItems(defaults.childrenItems)
         setWrapperPropsMap(defaults.wrapperPropsMap)
         setFixtureOverrides({})
       } else {
@@ -417,9 +475,7 @@ export function useShowcaseState(
             meta.components,
           )
           setPropValues(applied.propValues)
-          setChildrenText(applied.childrenText)
-          setChildrenMode('text')
-          setChildrenFixtureKey(null)
+          setChildrenItems(applied.childrenItems)
           setWrapperPropsMap(applied.wrapperPropsMap)
           setFixtureOverrides({})
         }
@@ -436,34 +492,13 @@ export function useShowcaseState(
     if (selectedComponent) {
       const defaults = resetToDefaults(selectedComponent, resolvedFixtures, meta.components)
       setPropValues(defaults.propValues)
-      setChildrenText(defaults.childrenText)
-      setChildrenMode(defaults.childrenMode)
-      setChildrenFixtureKey(defaults.childrenFixtureKey)
+      setChildrenItems(defaults.childrenItems)
       setWrapperPropsMap(defaults.wrapperPropsMap)
       setFixtureOverrides({})
       setPresetModeState('generated')
       setInstanceCountState(1)
     }
   }, [selectedComponent, resolvedFixtures, meta.components])
-
-  /** Wrap setChildrenFixtureKey to auto-init overrides for component fixtures */
-  const setChildrenFixtureKeyWrapped = useCallback(
-    (key: string | null) => {
-      setChildrenFixtureKey(key)
-      if (key?.startsWith('components/')) {
-        const compName = key.slice('components/'.length)
-        initFixtureOverrides('children', compName)
-      } else {
-        setFixtureOverrides((prev) => {
-          if (!('children' in prev)) return prev
-          const next = { ...prev }
-          delete next.children
-          return next
-        })
-      }
-    },
-    [initFixtureOverrides],
-  )
 
   const setFixturePropValue = useCallback((slotKey: string, propName: string, value: unknown) => {
     setFixtureOverrides((prev) => {
@@ -508,9 +543,7 @@ export function useShowcaseState(
     search,
     filteredComponents,
     propValues,
-    childrenText,
-    childrenMode,
-    childrenFixtureKey,
+    childrenItems,
     resolvedFixtures,
     fixtureOverrides,
     wrapperPropsMap,
@@ -519,9 +552,9 @@ export function useShowcaseState(
     selectComponent,
     setSearch,
     setPropValue,
-    setChildrenText,
-    setChildrenMode,
-    setChildrenFixtureKey: setChildrenFixtureKeyWrapped,
+    addChildItem,
+    removeChildItem,
+    updateChildItem,
     setFixturePropValue,
     setFixtureChildrenText,
     setWrapperPropValue,

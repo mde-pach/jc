@@ -19,16 +19,17 @@ export { ThemeToggle } from './components/theme-toggle.js'
 export { ViewportPicker } from './components/viewport-picker.js'
 // Utilities
 export { defineFixtures, resolveFixturePlugins, resolveFixtureValue } from './lib/fixtures.js'
+export { useResolvedComponent } from './lib/use-resolved-component.jsx'
 export type { FixtureOverride, ShowcaseState } from './lib/use-showcase-state.js'
 // State
 export { useShowcaseState } from './lib/use-showcase-state.js'
-export { useResolvedComponent } from './lib/use-resolved-component.jsx'
 
 // Theme
 export type { JcTheme } from './lib/use-theme.js'
 
 // Types
 export type {
+  ChildItem,
   JcComponentMeta,
   JcConfig,
   JcControlType,
