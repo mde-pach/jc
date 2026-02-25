@@ -1,4 +1,5 @@
-import type { LucideIcon, ReactNode } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 // ── Complex prop types ──────────────────────────────────────
 
