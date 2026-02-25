@@ -5,13 +5,16 @@
  * Supports light and dark color palettes.
  */
 
-import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedPluginItem } from '../types.js'
 import { resolveControlType } from './faker-map.js'
 import { fixtureToCodeString } from './fixtures.js'
 import type { FixtureOverride } from './use-showcase-state.js'
-import { toPascalCase } from './utils.js'
+import { applyPathAlias, COMPONENT_FIXTURE_PREFIX, toPascalCase } from './utils.js'
 
-/** Well-known fixture plugin → npm package mappings */
+/**
+ * Well-known plugin → npm package mappings (fallback).
+ * Prefer using `importPath` on JcPlugin instead.
+ */
 const PLUGIN_PACKAGE_MAP: Record<string, string> = {
   lucide: 'lucide-react',
   'react-icons': 'react-icons',
@@ -19,14 +22,31 @@ const PLUGIN_PACKAGE_MAP: Record<string, string> = {
   phosphor: '@phosphor-icons/react',
 }
 
-/** Apply path alias mapping (same logic as extract.ts applyPathAlias) */
-function applyPathAlias(filePath: string, pathAlias: Record<string, string>): string {
-  for (const [alias, sourcePrefix] of Object.entries(pathAlias)) {
-    if (filePath.startsWith(sourcePrefix)) {
-      return alias + filePath.slice(sourcePrefix.length)
+/**
+ * Resolve the import path for a fixture plugin.
+ * Checks plugin's own importPath first, then legacy PLUGIN_PACKAGE_MAP, then uses plugin name.
+ */
+function resolvePluginImportPath(
+  pluginName: string,
+  pluginImportPaths: Map<string, string>,
+): string {
+  return pluginImportPaths.get(pluginName) ?? PLUGIN_PACKAGE_MAP[pluginName] ?? pluginName
+}
+
+/**
+ * Build a Map of plugin name → import path from resolved fixtures.
+ * Prefers the `importPath` field from the original plugin definition.
+ */
+export function buildPluginImportMap(fixtures: JcResolvedPluginItem[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const f of fixtures) {
+    if (!map.has(f.pluginName)) {
+      // The importPath is stored at the plugin level but carried through to resolved fixtures
+      // via the pluginName — we check PLUGIN_PACKAGE_MAP as fallback
+      map.set(f.pluginName, PLUGIN_PACKAGE_MAP[f.pluginName] ?? f.pluginName)
     }
   }
-  return filePath
+  return map
 }
 
 /**
@@ -37,12 +57,13 @@ export function generateImportTokens(
   component: JcComponentMeta,
   props: Record<string, unknown>,
   childrenItems: ChildItem[],
-  fixtures: JcResolvedFixture[],
+  fixtures: JcResolvedPluginItem[],
   fixtureOverrides: Record<string, FixtureOverride>,
   meta: JcMeta,
   C: ColorPalette,
 ): CodeToken[] {
   const pathAlias = meta.pathAlias ?? { '@/': 'src/' }
+  const fixturePluginImportPaths = buildPluginImportMap(fixtures)
   const tokens: CodeToken[] = []
 
   // Collect imports: Map<importPath, Set<namedExport>>
@@ -75,8 +96,8 @@ export function generateImportTokens(
   // 3. Collect fixture references from props and children
   const collectFixtureImport = (qualifiedKey: string) => {
     // Component fixtures → import from their file path
-    if (qualifiedKey.startsWith('components/')) {
-      const compName = qualifiedKey.slice('components/'.length)
+    if (qualifiedKey.startsWith(COMPONENT_FIXTURE_PREFIX)) {
+      const compName = qualifiedKey.slice(COMPONENT_FIXTURE_PREFIX.length)
       const comp = meta.components.find((c) => c.displayName === compName)
       if (comp) {
         const cPath = applyPathAlias(comp.filePath, pathAlias).replace(/\.tsx$/, '')
@@ -84,10 +105,10 @@ export function generateImportTokens(
       }
       return
     }
-    // Plugin fixtures → import from package
+    // Plugin fixtures → import from package (prefer importPath, fall back to legacy map)
     const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
     if (fixture) {
-      const pkg = PLUGIN_PACKAGE_MAP[fixture.pluginName] ?? fixture.pluginName
+      const pkg = resolvePluginImportPath(fixture.pluginName, fixturePluginImportPaths)
       addImport(toPascalCase(fixture.label), pkg)
     }
   }
@@ -102,8 +123,16 @@ export function generateImportTokens(
       // Check for sub-component fixture overrides
       const slotKey = `prop:${key}`
       const override = fixtureOverrides[slotKey]
-      if (override && value.startsWith('components/')) {
-        collectOverrideImports(override, value, meta, fixtures, pathAlias, addImport)
+      if (override && value.startsWith(COMPONENT_FIXTURE_PREFIX)) {
+        collectOverrideImports(
+          override,
+          value,
+          meta,
+          fixtures,
+          pathAlias,
+          addImport,
+          fixturePluginImportPaths,
+        )
       }
     }
   }
@@ -114,8 +143,16 @@ export function generateImportTokens(
     if (item.type === 'fixture' && item.value) {
       collectFixtureImport(item.value)
       const childOverride = fixtureOverrides[`children:${i}`]
-      if (childOverride && item.value.startsWith('components/')) {
-        collectOverrideImports(childOverride, item.value, meta, fixtures, pathAlias, addImport)
+      if (childOverride && item.value.startsWith(COMPONENT_FIXTURE_PREFIX)) {
+        collectOverrideImports(
+          childOverride,
+          item.value,
+          meta,
+          fixtures,
+          pathAlias,
+          addImport,
+          fixturePluginImportPaths,
+        )
       }
     }
   }
@@ -143,23 +180,24 @@ function collectOverrideImports(
   override: FixtureOverride,
   _qualifiedKey: string,
   meta: JcMeta,
-  fixtures: JcResolvedFixture[],
+  fixtures: JcResolvedPluginItem[],
   pathAlias: Record<string, string>,
   addImport: (name: string, path: string) => void,
+  pluginImportPaths: Map<string, string>,
 ) {
   for (const value of Object.values(override.props)) {
     if (typeof value !== 'string') continue
     const fixture = fixtures.find((f) => f.qualifiedKey === value)
     if (fixture) {
-      if (value.startsWith('components/')) {
-        const compName = value.slice('components/'.length)
+      if (value.startsWith(COMPONENT_FIXTURE_PREFIX)) {
+        const compName = value.slice(COMPONENT_FIXTURE_PREFIX.length)
         const comp = meta.components.find((c) => c.displayName === compName)
         if (comp) {
           const cPath = applyPathAlias(comp.filePath, pathAlias).replace(/\.tsx$/, '')
           addImport(compName, cPath)
         }
       } else {
-        const pkg = PLUGIN_PACKAGE_MAP[fixture.pluginName] ?? fixture.pluginName
+        const pkg = resolvePluginImportPath(fixture.pluginName, pluginImportPaths)
         addImport(toPascalCase(fixture.label), pkg)
       }
     }
@@ -197,11 +235,75 @@ export const C_LIGHT = {
 
 export type ColorPalette = Record<keyof typeof C_DARK, string>
 
+/**
+ * Convert a single prop key+value to highlighted code tokens.
+ * Shared by both generateCodeTokens and componentFixtureToCodeTokens to avoid duplication.
+ */
+function propValueToTokens(
+  key: string,
+  value: unknown,
+  controlType: JcControlType | null,
+  fixtures: JcResolvedPluginItem[],
+  C: ColorPalette,
+): CodeToken[] | null {
+  if (value === undefined || value === null || value === '') return null
+  if (Array.isArray(value) && value.length === 0) return null
+
+  const group: CodeToken[] = []
+
+  if (controlType === 'component' && typeof value === 'string') {
+    if (!value) return null
+    const codeStr = fixtureToCodeString(value, fixtures)
+    // Simple component fixture — no inline overrides
+    group.push(
+      { text: key, color: C.prop },
+      { text: '={', color: C.punctuation },
+      { text: codeStr, color: C.component },
+      { text: '}', color: C.punctuation },
+    )
+  } else if (typeof value === 'boolean') {
+    if (!value) return null // skip false booleans
+    group.push({ text: key, color: C.prop })
+  } else if (typeof value === 'string') {
+    group.push(
+      { text: key, color: C.prop },
+      { text: '=', color: C.punctuation },
+      { text: `"${value}"`, color: C.string },
+    )
+  } else if (typeof value === 'number') {
+    group.push(
+      { text: key, color: C.prop },
+      { text: '={', color: C.punctuation },
+      { text: String(value), color: C.number },
+      { text: '}', color: C.punctuation },
+    )
+  } else if (Array.isArray(value)) {
+    group.push({ text: key, color: C.prop }, { text: '={', color: C.punctuation })
+    group.push(...formatArrayTokens(value, fixtures, C))
+    group.push({ text: '}', color: C.punctuation })
+  } else if (typeof value === 'object' && value !== null) {
+    group.push({ text: key, color: C.prop }, { text: '={', color: C.punctuation })
+    group.push(...formatObjectTokens(value as Record<string, unknown>, fixtures, C))
+    group.push({ text: '}', color: C.punctuation })
+  } else {
+    group.push(
+      { text: key, color: C.prop },
+      { text: '={', color: C.punctuation },
+      { text: JSON.stringify(value), color: C.text },
+      { text: '}', color: C.punctuation },
+    )
+  }
+
+  return group.length > 0 ? group : null
+}
+
+type JcControlType = ReturnType<typeof resolveControlType>
+
 export function generateCodeTokens(
   component: JcComponentMeta,
   props: Record<string, unknown>,
   childrenItems: ChildItem[],
-  fixtures: JcResolvedFixture[],
+  fixtures: JcResolvedPluginItem[],
   C: ColorPalette = C_DARK,
   fixtureOverrides: Record<string, FixtureOverride> = {},
   meta?: JcMeta,
@@ -231,7 +333,7 @@ export function generateCodeTokens(
         // Component fixtures with overrides → full JSX
         const slotKey = `prop:${key}`
         const override = fixtureOverrides[slotKey]
-        if (value.startsWith('components/') && override && meta) {
+        if (value.startsWith(COMPONENT_FIXTURE_PREFIX) && override && meta) {
           const subTokens = componentFixtureToCodeTokens(value, override, meta, fixtures, C)
           group.push(
             { text: key, color: C.prop },
@@ -281,6 +383,10 @@ export function generateCodeTokens(
       group.push({ text: key, color: C.prop }, { text: '={', color: C.punctuation })
       group.push(...formatArrayTokens(value, fixtures, C))
       group.push({ text: '}', color: C.punctuation })
+    } else if (typeof value === 'object' && value !== null) {
+      group.push({ text: key, color: C.prop }, { text: '={', color: C.punctuation })
+      group.push(...formatObjectTokens(value as Record<string, unknown>, fixtures, C))
+      group.push({ text: '}', color: C.punctuation })
     } else {
       group.push(
         { text: key, color: C.prop },
@@ -300,7 +406,7 @@ export function generateCodeTokens(
       const item = childrenItems[i]
       if (item.type === 'fixture' && item.value) {
         const childOverride = fixtureOverrides[`children:${i}`]
-        if (item.value.startsWith('components/') && childOverride && meta) {
+        if (item.value.startsWith(COMPONENT_FIXTURE_PREFIX) && childOverride && meta) {
           childTokenGroups.push(
             componentFixtureToCodeTokens(item.value, childOverride, meta, fixtures, C),
           )
@@ -432,7 +538,7 @@ export function generateCodeTokens(
 /** Format array values as highlighted tokens */
 export function formatArrayTokens(
   arr: unknown[],
-  fixtures: JcResolvedFixture[],
+  fixtures: JcResolvedPluginItem[],
   C: ColorPalette = C_DARK,
 ): CodeToken[] {
   const tokens: CodeToken[] = []
@@ -489,6 +595,42 @@ export function formatArrayTokens(
   return tokens
 }
 
+/** Format a plain object value as highlighted tokens: { key: "value", ... } */
+export function formatObjectTokens(
+  obj: Record<string, unknown>,
+  fixtures: JcResolvedPluginItem[],
+  C: ColorPalette = C_DARK,
+): CodeToken[] {
+  const tokens: CodeToken[] = []
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined && v !== null)
+  tokens.push({ text: '{ ', color: C.punctuation })
+  for (let i = 0; i < entries.length; i++) {
+    if (i > 0) tokens.push({ text: ', ', color: C.punctuation })
+    const [k, v] = entries[i]
+    tokens.push({ text: k, color: C.prop }, { text: ': ', color: C.punctuation })
+    if (typeof v === 'string') {
+      const fixture = fixtures.find((f) => f.qualifiedKey === v)
+      if (fixture) {
+        tokens.push({ text: toPascalCase(fixture.label), color: C.component })
+      } else {
+        tokens.push({ text: `"${v}"`, color: C.string })
+      }
+    } else if (typeof v === 'number') {
+      tokens.push({ text: String(v), color: C.number })
+    } else if (typeof v === 'boolean') {
+      tokens.push({ text: String(v), color: C.boolean })
+    } else if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+      tokens.push(...formatObjectTokens(v as Record<string, unknown>, fixtures, C))
+    } else if (Array.isArray(v)) {
+      tokens.push(...formatArrayTokens(v, fixtures, C))
+    } else {
+      tokens.push({ text: JSON.stringify(v), color: C.text })
+    }
+  }
+  tokens.push({ text: ' }', color: C.punctuation })
+  return tokens
+}
+
 /**
  * Generate JSX code tokens for a component fixture with overridden props.
  * E.g. `<Button variant="outline">Click me</Button>` instead of `<Button />`
@@ -497,11 +639,11 @@ export function componentFixtureToCodeTokens(
   qualifiedKey: string,
   override: FixtureOverride,
   meta: JcMeta,
-  fixtures: JcResolvedFixture[],
+  fixtures: JcResolvedPluginItem[],
   C: ColorPalette = C_DARK,
 ): CodeToken[] {
-  const compName = qualifiedKey.startsWith('components/')
-    ? qualifiedKey.slice('components/'.length)
+  const compName = qualifiedKey.startsWith(COMPONENT_FIXTURE_PREFIX)
+    ? qualifiedKey.slice(COMPONENT_FIXTURE_PREFIX.length)
     : qualifiedKey
   const comp = meta.components.find((c) => c.displayName === compName)
 
@@ -513,50 +655,12 @@ export function componentFixtureToCodeTokens(
   const tokens: CodeToken[] = []
   const propGroups: CodeToken[][] = []
 
-  // Collect non-default prop tokens
+  // Collect non-default prop tokens using shared helper
   for (const [key, value] of Object.entries(override.props)) {
-    if (value === undefined || value === null || value === '') continue
-    if (Array.isArray(value) && value.length === 0) continue
-
     const propMeta = comp.props[key]
     const controlType = propMeta ? resolveControlType(propMeta) : null
-    const group: CodeToken[] = []
-
-    if (controlType === 'component' && typeof value === 'string') {
-      if (!value) continue
-      const codeStr = fixtureToCodeString(value, fixtures)
-      group.push(
-        { text: key, color: C.prop },
-        { text: '={', color: C.punctuation },
-        { text: codeStr, color: C.component },
-        { text: '}', color: C.punctuation },
-      )
-    } else if (typeof value === 'boolean') {
-      if (!value) continue
-      group.push({ text: key, color: C.prop })
-    } else if (typeof value === 'string') {
-      group.push(
-        { text: key, color: C.prop },
-        { text: '=', color: C.punctuation },
-        { text: `"${value}"`, color: C.string },
-      )
-    } else if (typeof value === 'number') {
-      group.push(
-        { text: key, color: C.prop },
-        { text: '={', color: C.punctuation },
-        { text: String(value), color: C.number },
-        { text: '}', color: C.punctuation },
-      )
-    } else {
-      group.push(
-        { text: key, color: C.prop },
-        { text: '={', color: C.punctuation },
-        { text: JSON.stringify(value), color: C.text },
-        { text: '}', color: C.punctuation },
-      )
-    }
-
-    if (group.length > 0) propGroups.push(group)
+    const group = propValueToTokens(key, value, controlType, fixtures, C)
+    if (group) propGroups.push(group)
   }
 
   const childText = comp.acceptsChildren ? override.childrenText : ''

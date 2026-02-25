@@ -1,44 +1,49 @@
 import type { ComponentType } from 'react'
 import { describe, expect, it } from 'vitest'
-import type { JcComponentMeta, JcFixturePlugin, JcMeta } from '../types.js'
+import type { JcComponentMeta, JcMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
 import {
-  buildComponentFixtures,
-  defineFixtures,
+  buildComponentFixturesPlugin,
   fixtureToCodeString,
-  getDefaultFixtureKey,
-  getFixturesForKind,
   renderComponentFixture,
-  resolveFixturePlugins,
-  resolveFixtureValue,
+  resolveComponentFixtureItems,
 } from './fixtures.js'
+import {
+  definePlugin,
+  fromComponents,
+  getDefaultItemKey,
+  getItemsForPlugin,
+  getItemsForProp,
+  resolveItemValue,
+  resolvePluginItems,
+} from './plugins.js'
 
-const mockPlugin: JcFixturePlugin = {
+// ── Test plugins ───────────────────────────────────────────────
+
+const mockPlugin: JcPlugin = {
   name: 'test',
-  fixtures: [
-    { key: 'star', label: 'Star', category: 'icons', render: () => 'star-node' },
-    { key: 'heart', label: 'Heart', category: 'icons', render: () => 'heart-node' },
-    { key: 'badge', label: 'Status Badge', category: 'elements', render: () => 'badge-node' },
+  match: { kinds: ['icon'] },
+  items: [
+    { key: 'star', label: 'Star', value: 'star-value' },
+    { key: 'heart', label: 'Heart', value: 'heart-value' },
+    { key: 'badge', label: 'Status Badge', value: 'badge-value' },
   ],
 }
 
-const mockPlugin2: JcFixturePlugin = {
+const mockPlugin2: JcPlugin = {
   name: 'custom',
-  fixtures: [{ key: 'logo', label: 'App Logo', category: 'icons', render: () => 'logo-node' }],
+  match: { kinds: ['element'] },
+  items: [{ key: 'logo', label: 'App Logo', value: 'logo-value' }],
 }
 
-// ── resolveFixturePlugins ─────────────────────────────────────
+// ── resolvePluginItems ─────────────────────────────────────────
 
-describe('resolveFixturePlugins', () => {
-  it('returns empty array for undefined', () => {
-    expect(resolveFixturePlugins(undefined)).toEqual([])
-  })
-
+describe('resolvePluginItems', () => {
   it('returns empty array for empty list', () => {
-    expect(resolveFixturePlugins([])).toEqual([])
+    expect(resolvePluginItems([])).toEqual([])
   })
 
   it('flattens plugins with qualified keys', () => {
-    const resolved = resolveFixturePlugins([mockPlugin])
+    const resolved = resolvePluginItems([mockPlugin])
     expect(resolved).toHaveLength(3)
     expect(resolved[0].qualifiedKey).toBe('test/star')
     expect(resolved[0].pluginName).toBe('test')
@@ -47,59 +52,44 @@ describe('resolveFixturePlugins', () => {
   })
 
   it('merges multiple plugins', () => {
-    const resolved = resolveFixturePlugins([mockPlugin, mockPlugin2])
+    const resolved = resolvePluginItems([mockPlugin, mockPlugin2])
     expect(resolved).toHaveLength(4)
     expect(resolved[3].qualifiedKey).toBe('custom/logo')
   })
 })
 
-// ── resolveFixtureValue ───────────────────────────────────────
+// ── resolveItemValue ──────────────────────────────────────────
 
-describe('resolveFixtureValue', () => {
-  const resolved = resolveFixturePlugins([mockPlugin])
+describe('resolveItemValue', () => {
+  const resolved = resolvePluginItems([mockPlugin])
 
   it('returns render() result for valid key', () => {
-    expect(resolveFixtureValue('test/star', resolved)).toBe('star-node')
+    const result = resolveItemValue('test/star', resolved)
+    expect(result).toBeDefined()
   })
 
   it('returns undefined for null key', () => {
-    expect(resolveFixtureValue(null, resolved)).toBeUndefined()
+    expect(resolveItemValue(null, resolved)).toBeUndefined()
   })
 
   it('returns undefined for undefined key', () => {
-    expect(resolveFixtureValue(undefined, resolved)).toBeUndefined()
+    expect(resolveItemValue(undefined, resolved)).toBeUndefined()
   })
 
   it('returns undefined for unknown key', () => {
-    expect(resolveFixtureValue('test/unknown', resolved)).toBeUndefined()
+    expect(resolveItemValue('test/unknown', resolved)).toBeUndefined()
   })
 
-  it('returns component constructor when asConstructor is true', () => {
-    const MockComponent = () => null
-    const pluginWithComponent: JcFixturePlugin = {
-      name: 'icons',
-      fixtures: [
-        {
-          key: 'star',
-          label: 'Star',
-          render: () => 'star-node',
-          component: MockComponent,
-        },
-      ],
-    }
-    const resolvedWithComponent = resolveFixturePlugins([pluginWithComponent])
-    expect(resolveFixtureValue('icons/star', resolvedWithComponent, true)).toBe(MockComponent)
-  })
-
-  it('falls back to render() when asConstructor is true but no component field', () => {
-    expect(resolveFixtureValue('test/star', resolved, true)).toBe('star-node')
+  it('returns getValue() when asConstructor is true', () => {
+    const result = resolveItemValue('test/star', resolved, true)
+    expect(result).toBe('star-value')
   })
 })
 
-// ── fixtureToCodeString ───────────────────────────────────────
+// ── fixtureToCodeString ──────────────────────────────────────
 
 describe('fixtureToCodeString', () => {
-  const resolved = resolveFixturePlugins([mockPlugin])
+  const resolved = resolvePluginItems([mockPlugin])
 
   it('converts label to PascalCase JSX', () => {
     expect(fixtureToCodeString('test/star', resolved)).toBe('<Star />')
@@ -114,60 +104,83 @@ describe('fixtureToCodeString', () => {
   })
 })
 
-// ── getFixturesForKind ────────────────────────────────────────
+// ── getItemsForProp ──────────────────────────────────────────
 
-describe('getFixturesForKind', () => {
-  const resolved = resolveFixturePlugins([mockPlugin])
+describe('getItemsForProp', () => {
+  const plugins = [mockPlugin, mockPlugin2]
+  const resolved = resolvePluginItems(plugins)
 
-  it('returns all fixtures when no kind specified', () => {
-    expect(getFixturesForKind(resolved)).toHaveLength(3)
+  it('returns all items when no specific plugin matches', () => {
+    const prop = { name: 'thing', type: 'string', required: false, description: '', isChildren: false }
+    const result = getItemsForProp(prop, plugins, resolved)
+    expect(result).toHaveLength(4)
   })
 
-  it('filters by kind with singular/plural tolerance', () => {
-    const icons = getFixturesForKind(resolved, 'icon')
-    expect(icons).toHaveLength(2)
-    expect(icons.every((f) => f.category === 'icons')).toBe(true)
-  })
-
-  it('filters by exact category match', () => {
-    const elements = getFixturesForKind(resolved, 'elements')
-    // 'elements' matches 'elements' exactly, plus fixtures without category
-    expect(elements.some((f) => f.key === 'badge')).toBe(true)
-  })
-
-  it('falls back to all fixtures when no category matches', () => {
-    const result = getFixturesForKind(resolved, 'nonexistent')
+  it('matches by componentKind', () => {
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    const result = getItemsForProp(prop, plugins, resolved)
+    // mockPlugin matches 'icon' kind → 3 items
     expect(result).toHaveLength(3)
+    expect(result.every((f) => f.pluginName === 'test')).toBe(true)
   })
 })
 
-// ── getDefaultFixtureKey ──────────────────────────────────────
+// ── getDefaultItemKey ─────────────────────────────────────────
 
-describe('getDefaultFixtureKey', () => {
-  const resolved = resolveFixturePlugins([mockPlugin])
+describe('getDefaultItemKey', () => {
+  const plugins = [mockPlugin]
+  const resolved = resolvePluginItems(plugins)
 
-  it('returns first matching fixture key for kind', () => {
-    expect(getDefaultFixtureKey(resolved, 'icon')).toBe('test/star')
+  it('returns first matching item key', () => {
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    expect(getDefaultItemKey(prop, plugins, resolved)).toBe('test/star')
   })
 
-  it('returns first fixture key when no kind', () => {
-    expect(getDefaultFixtureKey(resolved)).toBe('test/star')
-  })
-
-  it('returns undefined for empty fixtures', () => {
-    expect(getDefaultFixtureKey([], 'icon')).toBeUndefined()
+  it('returns undefined for empty items', () => {
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    expect(getDefaultItemKey(prop, [], [])).toBeUndefined()
   })
 })
 
-// ── defineFixtures ───────────────────────────────────────────
+// ── definePlugin ────────────────────────────────────────────
 
-describe('defineFixtures', () => {
-  it('returns the same plugin object (identity)', () => {
-    const plugin: JcFixturePlugin = {
+describe('definePlugin', () => {
+  it('returns a factory function that produces the plugin', () => {
+    const plugin: JcPlugin = {
       name: 'test',
-      fixtures: [{ key: 'a', label: 'A', render: () => 'a' }],
+      match: { types: ['LucideIcon'] },
+      items: [{ key: 'a', label: 'A', value: 'a' }],
     }
-    expect(defineFixtures(plugin)).toBe(plugin)
+    const factory = definePlugin(plugin)
+    expect(typeof factory).toBe('function')
+    expect(factory()).toBe(plugin)
+  })
+})
+
+// ── fromComponents ──────────────────────────────────────────
+
+describe('fromComponents', () => {
+  it('generates items from PascalCase exports', () => {
+    const module = {
+      Star: () => null,
+      Heart: () => null,
+      default: () => null,
+      helper: 'not a component',
+    }
+    const items = fromComponents(module)
+    expect(items).toHaveLength(2)
+    expect(items[0].label).toBe('Star')
+    expect(items[1].label).toBe('Heart')
+  })
+
+  it('respects custom filter', () => {
+    const module = {
+      Star: () => null,
+      Heart: () => null,
+      Zap: () => null,
+    }
+    const items = fromComponents(module, (key) => key !== 'Zap')
+    expect(items).toHaveLength(2)
   })
 })
 
@@ -197,24 +210,19 @@ describe('renderComponentFixture', () => {
     Button: () => Promise.resolve(DummyButton),
   }
 
-  const baseFixtures = resolveFixturePlugins([mockPlugin])
+  const plugins = [mockPlugin]
+  const resolvedItems = resolvePluginItems(plugins)
 
   it('returns a ReactNode for a valid component fixture', () => {
     const override = { props: { label: 'Go' }, childrenText: 'Click' }
-    const node = renderComponentFixture('components/Button', override, meta, registry, baseFixtures)
+    const node = renderComponentFixture('components/Button', override, meta, registry, plugins, resolvedItems)
     expect(node).not.toBeNull()
     expect(node).toBeDefined()
   })
 
   it('returns null for unknown component', () => {
     const override = { props: {}, childrenText: '' }
-    const node = renderComponentFixture(
-      'components/Unknown',
-      override,
-      meta,
-      registry,
-      baseFixtures,
-    )
+    const node = renderComponentFixture('components/Unknown', override, meta, registry, plugins, resolvedItems)
     expect(node).toBeNull()
   })
 
@@ -224,14 +232,14 @@ describe('renderComponentFixture', () => {
       components: [makeComp('Card')],
     }
     const override = { props: {}, childrenText: '' }
-    const node = renderComponentFixture('components/Card', override, meta2, registry, baseFixtures)
+    const node = renderComponentFixture('components/Card', override, meta2, registry, plugins, resolvedItems)
     expect(node).toBeNull()
   })
 })
 
-// ── buildComponentFixtures ──────────────────────────────────
+// ── buildComponentFixturesPlugin ────────────────────────────
 
-describe('buildComponentFixtures', () => {
+describe('buildComponentFixturesPlugin', () => {
   const makeComp = (name: string, acceptsChildren = false): JcComponentMeta => ({
     displayName: name,
     filePath: `src/components/${name.toLowerCase()}.tsx`,
@@ -258,36 +266,73 @@ describe('buildComponentFixtures', () => {
     // Card intentionally missing from registry
   }
 
-  const baseFixtures = resolveFixturePlugins([mockPlugin])
+  const basePlugins = [mockPlugin]
+  const baseItems = resolvePluginItems(basePlugins)
 
   it('returns a plugin with name "components"', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
+    const plugin = buildComponentFixturesPlugin(meta, registry, basePlugins, baseItems)
     expect(plugin.name).toBe('components')
   })
 
-  it('creates one fixture per component with a registry entry', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    expect(plugin.fixtures).toHaveLength(2)
-    expect(plugin.fixtures.map((f) => f.key)).toEqual(['Button', 'Badge'])
+  it('creates one item per component with a registry entry', () => {
+    const plugin = buildComponentFixturesPlugin(meta, registry, basePlugins, baseItems)
+    expect(plugin.items).toHaveLength(2)
+    expect(plugin.items.map((f) => f.key)).toEqual(['Button', 'Badge'])
   })
 
   it('skips components without a registry entry', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    expect(plugin.fixtures.find((f) => f.key === 'Card')).toBeUndefined()
+    const plugin = buildComponentFixturesPlugin(meta, registry, basePlugins, baseItems)
+    expect(plugin.items.find((f) => f.key === 'Card')).toBeUndefined()
   })
 
-  it('each fixture has correct key, label, and category', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    for (const fixture of plugin.fixtures) {
-      expect(fixture.label).toBe(fixture.key)
-      expect(fixture.category).toBe('components')
-    }
+  it('has priority -1', () => {
+    const plugin = buildComponentFixturesPlugin(meta, registry, basePlugins, baseItems)
+    expect(plugin.priority).toBe(-1)
+  })
+})
+
+// ── resolveComponentFixtureItems ────────────────────────────
+
+describe('resolveComponentFixtureItems', () => {
+  const makeComp = (name: string, acceptsChildren = false): JcComponentMeta => ({
+    displayName: name,
+    filePath: `src/components/${name.toLowerCase()}.tsx`,
+    description: '',
+    props: {
+      label: { name: 'label', type: 'string', required: true, description: '', isChildren: false },
+    },
+    acceptsChildren,
   })
 
-  it('render() returns a ReactNode (not null)', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    for (const fixture of plugin.fixtures) {
-      const node = fixture.render()
+  const meta: JcMeta = {
+    generatedAt: '2026-01-01',
+    componentDir: 'src/components',
+    components: [makeComp('Button', true), makeComp('Badge')],
+  }
+
+  const DummyButton = () => null
+  const DummyBadge = () => null
+
+  // biome-ignore lint/suspicious/noExplicitAny: test registry matches ShowcaseApp's props signature
+  const registry: Record<string, () => Promise<ComponentType<any>>> = {
+    Button: () => Promise.resolve(DummyButton),
+    Badge: () => Promise.resolve(DummyBadge),
+  }
+
+  const basePlugins = [mockPlugin]
+  const baseItems = resolvePluginItems(basePlugins)
+
+  it('returns resolved items with qualified keys', () => {
+    const items = resolveComponentFixtureItems(meta, registry, basePlugins, baseItems)
+    expect(items).toHaveLength(2)
+    expect(items[0].qualifiedKey).toBe('components/Button')
+    expect(items[1].qualifiedKey).toBe('components/Badge')
+  })
+
+  it('items have render() that returns a ReactNode', () => {
+    const items = resolveComponentFixtureItems(meta, registry, basePlugins, baseItems)
+    for (const item of items) {
+      const node = item.render()
       expect(node).not.toBeNull()
       expect(node).toBeDefined()
     }

@@ -127,6 +127,16 @@ export function parseExampleJsx(exampleText: string, subjectName: string): Parse
       return
     }
 
+    // Handle JSX fragments: <><Child /></> — treat as transparent wrapper
+    if (ts.isJsxFragment(node)) {
+      // Look inside the fragment for the subject
+      for (const child of node.children) {
+        visit(child)
+        if (result) return
+      }
+      return
+    }
+
     ts.forEachChild(node, visit)
   }
 
@@ -192,6 +202,14 @@ export function parseExampleWrapperChain(
     if (result !== null) return
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       result = collectWrapperChain(node, subjectName, sourceFile)
+      return
+    }
+    // Handle JSX fragments transparently — look inside for the subject
+    if (ts.isJsxFragment(node)) {
+      for (const child of node.children) {
+        visit(child)
+        if (result !== null) return
+      }
       return
     }
     ts.forEachChild(node, visit)
@@ -289,6 +307,14 @@ export function parseExamplePreset(exampleText: string, subjectName: string): Pa
       }
       return
     }
+    // Handle JSX fragments transparently
+    if (ts.isJsxFragment(node)) {
+      for (const child of node.children) {
+        visit(child)
+        if (result) return
+      }
+      return
+    }
     ts.forEachChild(node, visit)
   }
 
@@ -299,10 +325,11 @@ export function parseExamplePreset(exampleText: string, subjectName: string): Pa
 /**
  * Detect consistent wrapper components from multiple @example blocks.
  *
- * Returns an ordered array of wrappers (outermost first) if ALL examples
- * wrap the subject in the same wrapper chain. Supports nested wrappers.
- * Returns null if any example shows the subject standalone, or if examples
- * disagree on the wrapper chain, or if there are no examples.
+ * Uses majority consensus: if >50% of non-empty examples agree on the
+ * wrapper chain, that chain is accepted. This allows components to have
+ * both wrapped and standalone examples without losing wrapper detection.
+ *
+ * Returns an ordered array of wrappers (outermost first) or null.
  */
 export function detectWrapperFromExamples(
   examples: string[],
@@ -310,26 +337,48 @@ export function detectWrapperFromExamples(
 ): DetectedWrapper[] | null {
   if (examples.length === 0) return null
 
-  let wrapperChain: DetectedWrapper[] | null = null
-
+  // Parse all examples and collect wrapper chains
+  const chains: Array<DetectedWrapper[] | null> = []
   for (const example of examples) {
     const chain = parseExampleWrapperChain(example, subjectName)
-    if (chain === null) continue
+    if (chain === null) continue // unparseable, skip
+    chains.push(chain.length > 0 ? chain : null) // null = standalone
+  }
 
-    // Empty chain means subject is the outermost element → standalone
-    if (chain.length === 0) return null
+  if (chains.length === 0) return null
 
-    if (wrapperChain === null) {
-      wrapperChain = chain
+  // Group chains by their wrapper name signature (for majority vote)
+  const chainGroups = new Map<string, { chain: DetectedWrapper[]; count: number }>()
+  let standaloneCount = 0
+
+  for (const chain of chains) {
+    if (chain === null) {
+      standaloneCount++
+      continue
+    }
+    const sig = chain.map((w) => w.wrapperName).join('>')
+    const existing = chainGroups.get(sig)
+    if (existing) {
+      existing.count++
     } else {
-      // Check that the wrapper names match in order
-      if (chain.length !== wrapperChain.length) return null
-      for (let i = 0; i < chain.length; i++) {
-        if (chain[i].wrapperName !== wrapperChain[i].wrapperName) return null
-      }
+      chainGroups.set(sig, { chain, count: 1 })
     }
   }
 
-  if (!wrapperChain || wrapperChain.length === 0) return null
-  return wrapperChain
+  // Find the most common non-standalone chain
+  let bestChain: DetectedWrapper[] | null = null
+  let bestCount = 0
+  for (const { chain, count } of chainGroups.values()) {
+    if (count > bestCount) {
+      bestCount = count
+      bestChain = chain
+    }
+  }
+
+  // Majority consensus: the winning chain must have more votes than standalone + other chains
+  if (!bestChain || bestCount <= standaloneCount) return null
+  // Must be present in more than half of parseable examples
+  if (bestCount <= chains.length / 2) return null
+
+  return bestChain
 }

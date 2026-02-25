@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-24T12:35:00.127Z",
+  "generatedAt": "2026-02-24T23:39:13.451Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
@@ -82,6 +82,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<CommandButton icon={Download} variant=\"primary\" shortcut=\"Cmd+S\">Save</CommandButton>",
@@ -111,9 +113,9 @@
         }
       ],
       "usageCount": {
-        "direct": 1,
+        "direct": 2,
         "indirect": 0,
-        "total": 1
+        "total": 2
       }
     },
     {
@@ -148,6 +150,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<IconButton icon={Heart}>Like</IconButton>",
@@ -184,9 +188,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -218,10 +222,12 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "usageCount": {
-        "direct": 1,
-        "indirect": 2,
-        "total": 3
+        "direct": 2,
+        "indirect": 4,
+        "total": 6
       }
     },
     {
@@ -247,6 +253,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Accordion type=\"single\" collapsible>\n  <AccordionItem value=\"install\" title=\"How do I install jc?\">Run bun add jc.</AccordionItem>\n</Accordion>",
@@ -292,9 +300,9 @@
         }
       ],
       "usageCount": {
-        "direct": 1,
-        "indirect": 1,
-        "total": 2
+        "direct": 2,
+        "indirect": 2,
+        "total": 4
       }
     },
     {
@@ -334,6 +342,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<Avatar name=\"Alice Martin\" size=\"sm\" />",
@@ -371,9 +380,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -418,6 +427,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Badge variant=\"success\" icon={CheckCircle}>Active</Badge>",
@@ -464,9 +475,9 @@
         }
       ],
       "usageCount": {
-        "direct": 2,
+        "direct": 3,
         "indirect": 0,
-        "total": 2
+        "total": 3
       }
     },
     {
@@ -525,6 +536,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Card title=\"Overview\" description=\"A quick summary of your project\">Card body content goes here.</Card>",
@@ -599,6 +612,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<CodeBlock code=\"bun add jc\" language=\"bash\" />",
@@ -682,6 +696,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<DataTable columns={[\"Name\", \"Role\"]} rows={[[\"Alice\", \"Admin\"], [\"Bob\", \"Editor\"]]} striped />",
@@ -711,9 +726,321 @@
         }
       ],
       "usageCount": {
-        "direct": 4,
+        "direct": 5,
         "indirect": 0,
-        "total": 4
+        "total": 5
+      }
+    },
+    {
+      "displayName": "ProfileCard",
+      "filePath": "src/components/ui/data-display/profile-card.tsx",
+      "description": "A rich profile card showcasing complex prop data structures.",
+      "props": {
+        "name": {
+          "name": "name",
+          "type": "string",
+          "rawType": "string",
+          "required": true,
+          "description": "Display name",
+          "isChildren": false
+        },
+        "role": {
+          "name": "role",
+          "type": "\"admin\" | \"member\" | \"owner\" | \"guest\"",
+          "rawType": "enum",
+          "values": [
+            "admin",
+            "member",
+            "owner",
+            "guest"
+          ],
+          "required": true,
+          "description": "Role in the organization",
+          "isChildren": false
+        },
+        "avatarUrl": {
+          "name": "avatarUrl",
+          "type": "string",
+          "rawType": "enum",
+          "required": false,
+          "description": "Avatar image URL",
+          "isChildren": false
+        },
+        "bio": {
+          "name": "bio",
+          "type": "string",
+          "rawType": "enum",
+          "required": false,
+          "description": "Optional bio/description",
+          "isChildren": false
+        },
+        "online": {
+          "name": "online",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the user is currently online",
+          "isChildren": false
+        },
+        "verified": {
+          "name": "verified",
+          "type": "boolean",
+          "rawType": "enum",
+          "required": false,
+          "defaultValue": "false",
+          "description": "Whether the profile is verified",
+          "isChildren": false
+        },
+        "contact": {
+          "name": "contact",
+          "type": "{ email: string; phone?: string; address?: { street: string; city: string; zipCode: string; country: string } }",
+          "rawType": "ContactInfo",
+          "required": true,
+          "description": "Contact information (nested object)",
+          "isChildren": false,
+          "structuredFields": [
+            {
+              "name": "email",
+              "type": "string",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "phone",
+              "type": "string",
+              "optional": true,
+              "isComponent": false
+            },
+            {
+              "name": "address",
+              "type": "Address",
+              "optional": true,
+              "isComponent": false,
+              "fields": [
+                {
+                  "name": "street",
+                  "type": "string",
+                  "optional": false,
+                  "isComponent": false
+                },
+                {
+                  "name": "city",
+                  "type": "string",
+                  "optional": false,
+                  "isComponent": false
+                },
+                {
+                  "name": "zipCode",
+                  "type": "string",
+                  "optional": false,
+                  "isComponent": false
+                },
+                {
+                  "name": "country",
+                  "type": "string",
+                  "optional": false,
+                  "isComponent": false
+                }
+              ]
+            }
+          ]
+        },
+        "notifications": {
+          "name": "notifications",
+          "type": "{ email: boolean; push: boolean; sms: boolean; frequency: \"instant\" | \"daily\" | \"weekly\" }",
+          "rawType": "enum",
+          "required": false,
+          "description": "Notification preferences (object with mixed types)",
+          "isChildren": false,
+          "structuredFields": [
+            {
+              "name": "email",
+              "type": "boolean",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "push",
+              "type": "boolean",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "sms",
+              "type": "boolean",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "frequency",
+              "type": "\"instant\" | \"daily\" | \"weekly\"",
+              "optional": false,
+              "isComponent": false,
+              "values": [
+                "instant",
+                "daily",
+                "weekly"
+              ]
+            }
+          ]
+        },
+        "socialLinks": {
+          "name": "socialLinks",
+          "type": "{ platform: \"twitter\" | \"github\" | \"linkedin\" | \"website\"; url: string; label?: string }[]",
+          "rawType": "enum",
+          "required": false,
+          "description": "Social media links",
+          "isChildren": false,
+          "structuredFields": [
+            {
+              "name": "platform",
+              "type": "\"twitter\" | \"github\" | \"linkedin\" | \"website\"",
+              "optional": false,
+              "isComponent": false,
+              "values": [
+                "twitter",
+                "github",
+                "linkedin",
+                "website"
+              ]
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "label",
+              "type": "string",
+              "optional": true,
+              "isComponent": false
+            }
+          ]
+        },
+        "metrics": {
+          "name": "metrics",
+          "type": "{ label: string; value: number; unit?: string; trend?: \"up\" | \"down\" | \"flat\" }[]",
+          "rawType": "enum",
+          "required": false,
+          "description": "Key metrics displayed on the profile",
+          "isChildren": false,
+          "structuredFields": [
+            {
+              "name": "label",
+              "type": "string",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "value",
+              "type": "number",
+              "optional": false,
+              "isComponent": false
+            },
+            {
+              "name": "unit",
+              "type": "string",
+              "optional": true,
+              "isComponent": false
+            },
+            {
+              "name": "trend",
+              "type": "\"up\" | \"down\" | \"flat\"",
+              "optional": true,
+              "isComponent": false,
+              "values": [
+                "up",
+                "down",
+                "flat"
+              ]
+            }
+          ]
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "Record<string, string>",
+          "rawType": "enum",
+          "required": false,
+          "description": "Custom metadata key-value pairs",
+          "isChildren": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "LucideIcon",
+          "rawType": "enum",
+          "required": false,
+          "description": "Leading icon for the card",
+          "isChildren": false,
+          "componentKind": "icon"
+        },
+        "badge": {
+          "name": "badge",
+          "type": "any",
+          "rawType": "any",
+          "required": false,
+          "description": "Custom badge element",
+          "isChildren": false
+        },
+        "footer": {
+          "name": "footer",
+          "type": "any",
+          "rawType": "any",
+          "required": false,
+          "description": "Custom footer content",
+          "isChildren": false
+        }
+      },
+      "acceptsChildren": false,
+      "exportType": "named",
+      "tags": {
+        "example": [
+          "<ProfileCard name=\"Alice Johnson\" role=\"admin\" contact={{ email: \"alice@example.com\", phone: \"+1 555-0123\" }} online />",
+          "<ProfileCard name=\"Bob Smith\" role=\"member\" contact={{ email: \"bob@example.com\" }} metrics={[{ label: \"Posts\", value: 42 }, { label: \"Followers\", value: 1200, trend: \"up\" }]} />",
+          "<ProfileCard name=\"Charlie Dev\" role=\"owner\" contact={{ email: \"charlie@acme.com\", address: { street: \"123 Main St\", city: \"Paris\", zipCode: \"75001\", country: \"France\" } }} socialLinks={[{ platform: \"github\", url: \"https://github.com/charlie\" }, { platform: \"twitter\", url: \"https://twitter.com/charlie\" }]} verified />"
+        ]
+      },
+      "examples": [
+        {
+          "index": 0,
+          "propValues": {
+            "name": "Alice Johnson",
+            "role": "admin",
+            "contact": "{ email: \"alice@example.com\", phone: \"+1 555-0123\" }",
+            "online": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 1,
+          "propValues": {
+            "name": "Bob Smith",
+            "role": "member",
+            "contact": "{ email: \"bob@example.com\" }",
+            "metrics": "[{ label: \"Posts\", value: 42 }, { label: \"Followers\", value: 1200, trend: \"up\" }]"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        },
+        {
+          "index": 2,
+          "propValues": {
+            "name": "Charlie Dev",
+            "role": "owner",
+            "contact": "{ email: \"charlie@acme.com\", address: { street: \"123 Main St\", city: \"Paris\", zipCode: \"75001\", country: \"France\" } }",
+            "socialLinks": "[{ platform: \"github\", url: \"https://github.com/charlie\" }, { platform: \"twitter\", url: \"https://twitter.com/charlie\" }]",
+            "verified": "true"
+          },
+          "childrenText": "",
+          "wrapperProps": {}
+        }
+      ],
+      "usageCount": {
+        "direct": 0,
+        "indirect": 0,
+        "total": 0
       }
     },
     {
@@ -778,6 +1105,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<StatCard label=\"Revenue\" value={12500} change=\"+14%\" trend=\"up\" icon={DollarSign} />",
@@ -823,9 +1151,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -876,6 +1204,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Callout intent=\"info\" title=\"Heads up\">This feature is in beta.</Callout>",
@@ -923,9 +1253,9 @@
         }
       ],
       "usageCount": {
-        "direct": 5,
+        "direct": 6,
         "indirect": 0,
-        "total": 5
+        "total": 6
       }
     },
     {
@@ -969,6 +1299,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Dialog title=\"Confirm action\" description=\"Are you sure you want to proceed?\" defaultOpen>Dialog body content here.</Dialog>",
@@ -997,9 +1329,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -1041,6 +1373,8 @@
         }
       },
       "acceptsChildren": true,
+      "childrenType": "string",
+      "exportType": "named",
       "tags": {
         "example": [
           "<Tooltip content=\"Copy to clipboard\" side=\"top\">Hover me</Tooltip>",
@@ -1069,9 +1403,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -1157,6 +1491,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<TextField label=\"Email\" placeholder=\"you@example.com\" type=\"email\" required leadingIcon={Mail} />",
@@ -1210,9 +1545,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     },
     {
@@ -1269,6 +1604,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<Toggle label=\"Dark mode\" description=\"Switch between light and dark themes\" checked />",
@@ -1308,9 +1644,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 2,
         "indirect": 0,
-        "total": 0
+        "total": 2
       }
     },
     {
@@ -1354,6 +1690,7 @@
         }
       },
       "acceptsChildren": false,
+      "exportType": "named",
       "tags": {
         "example": [
           "<EmptyState icon={Inbox} title=\"No messages\" description=\"You're all caught up.\" />",
@@ -1393,9 +1730,9 @@
         }
       ],
       "usageCount": {
-        "direct": 0,
+        "direct": 1,
         "indirect": 0,
-        "total": 0
+        "total": 1
       }
     }
   ],

@@ -19,12 +19,13 @@ import {
 import type { Root } from 'react-dom/client'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { JcMeta, JcResolvedFixture } from '../types.js'
+import type { JcMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
 import {
-  buildComponentFixtures,
+  buildComponentFixturesPlugin,
   renderComponentFixture,
-  resolveFixturePlugins,
+  resolveComponentFixtureItems,
 } from './fixtures.js'
+import { resolvePluginItems } from './plugins.js'
 
 // ── Test helpers ─────────────────────────────────────────────
 
@@ -80,7 +81,8 @@ const registry: Record<string, () => Promise<ComponentType<any>>> = {
   TestButton: () => Promise.resolve(TestButton),
 }
 
-const baseFixtures: JcResolvedFixture[] = resolveFixturePlugins([])
+const basePlugins: JcPlugin[] = []
+const baseItems: JcResolvedPluginItem[] = resolvePluginItems(basePlugins)
 
 let container: HTMLDivElement
 let root: Root
@@ -135,16 +137,17 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
       override,
       meta,
       registry,
-      baseFixtures,
+      basePlugins,
+      baseItems,
     )
     expect(isValidElement(node)).toBe(true)
   })
 
-  it('buildComponentFixtures render() returns a valid React element', () => {
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    const fixture = plugin.fixtures.find((f) => f.key === 'TestButton')
-    expect(fixture).toBeDefined()
-    const node = fixture!.render()
+  it('resolveComponentFixtureItems render() returns a valid React element', () => {
+    const items = resolveComponentFixtureItems(meta, registry, basePlugins, baseItems)
+    const item = items.find((f) => f.key === 'TestButton')
+    expect(item).toBeDefined()
+    const node = item!.render()
     expect(isValidElement(node)).toBe(true)
   })
 
@@ -155,7 +158,8 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
       override,
       meta,
       registry,
-      baseFixtures,
+      basePlugins,
+      baseItems,
     )
 
     const el = await mount(node as ReactElement)
@@ -172,7 +176,8 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
       override,
       meta,
       registry,
-      baseFixtures,
+      basePlugins,
+      baseItems,
     ) as ReactElement
 
     // Simulate what Radix's <Slot> / asChild does
@@ -187,11 +192,11 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('buildComponentFixtures render() + cloneElement onClick works', async () => {
+  it('resolveComponentFixtureItems render() + cloneElement onClick works', async () => {
     const onClick = vi.fn()
-    const plugin = buildComponentFixtures(meta, registry, baseFixtures)
-    const fixture = plugin.fixtures.find((f) => f.key === 'TestButton')!
-    const node = fixture.render() as ReactElement
+    const items = resolveComponentFixtureItems(meta, registry, basePlugins, baseItems)
+    const item = items.find((f) => f.key === 'TestButton')!
+    const node = item.render() as ReactElement
 
     const slotted = createElement(SlotSimulator, { onClick }, node)
     const el = await mount(slotted)
@@ -204,9 +209,6 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
   })
 
   it('BUG REPRO: strict component (no prop forwarding) + cloneElement loses onClick', async () => {
-    // This test reproduces the real bug: example components like Button don't
-    // forward arbitrary props (no ...rest spread). When Radix asChild adds
-    // onClick via cloneElement → the component ignores it → dialog never opens.
     const strictMeta: JcMeta = {
       generatedAt: '2026-01-01',
       componentDir: 'src/components',
@@ -242,6 +244,7 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
       strictMeta,
       strictRegistry,
       [],
+      [],
     ) as ReactElement
 
     // Simulate what Radix's <Slot> / asChild does
@@ -251,14 +254,11 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
     const button = el.querySelector('button')
     expect(button).not.toBeNull()
 
-    // Click the button — this SHOULD trigger onClick but fails because
-    // StrictButton doesn't forward onClick to the DOM <button>
     button!.click()
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
   it('fixture click works with a slow-loading component (not pre-cached)', async () => {
-    // Simulate a component that takes time to load (not already in cache)
     // biome-ignore lint/suspicious/noExplicitAny: test component
     const SlowButton = forwardRef<HTMLButtonElement, any>((props, ref) => {
       const { children, ...rest } = props
@@ -287,9 +287,9 @@ describe('component fixture + cloneElement (asChild simulation)', () => {
     }
 
     const onClick = vi.fn()
-    const plugin = buildComponentFixtures(slowMeta, slowRegistry, [])
-    const fixture = plugin.fixtures.find((f) => f.key === 'SlowButton')!
-    const node = fixture.render() as ReactElement
+    const items = resolveComponentFixtureItems(slowMeta, slowRegistry, [], [])
+    const item = items.find((f) => f.key === 'SlowButton')!
+    const node = item.render() as ReactElement
 
     const slotted = createElement(SlotSimulator, { onClick }, node)
     const el = await mount(slotted)

@@ -3,68 +3,25 @@
  */
 
 import { faker } from '@faker-js/faker'
-import type { JcComponentMeta, JcControlType, JcPropMeta, JcResolvedFixture } from '../types.js'
-import { getDefaultFixtureKey } from './fixtures.js'
-
-// ── Structured field types ───────────────────────────────────
-
-/** A single field inside a structured object type like `{ label: string; icon: LucideIcon }` */
-export interface StructuredField {
-  name: string
-  type: string
-  optional: boolean
-  /** True when the field type is a component/icon (ReactNode, LucideIcon, etc.) */
-  isComponent: boolean
-  /** Component sub-kind: 'icon' if the type looks icon-like, 'node' for ReactNode/Element */
-  componentKind?: 'icon' | 'node'
-}
-
-/**
- * Parse a structured object type string into an array of field definitions.
- * Input: `{ label: string; content: ReactNode; icon?: LucideIcon }`
- * Returns null for non-object or malformed types.
- */
-export function parseStructuredFields(typeStr: string): StructuredField[] | null {
-  // Strip outer braces
-  const trimmed = typeStr.trim()
-  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null
-  const inner = trimmed.slice(1, -1).trim()
-  if (!inner) return null
-
-  const fields: StructuredField[] = []
-  // Split on semicolons, filter empty parts
-  const parts = inner.split(';').filter((p) => p.trim())
-
-  for (const part of parts) {
-    // Match `name?: type` or `name: type`
-    const match = part.trim().match(/^(\w+)(\?)?:\s*(.+)$/)
-    if (!match) return null // malformed → bail
-
-    const [, name, optionalMark, rawType] = match
-    const type = rawType.trim()
-    const optional = optionalMark === '?'
-
-    // Detect component types
-    const isIconType = /Icon|Component/.test(type) && !/string|number|boolean/.test(type)
-    const isNodeType = /ReactNode|ReactElement|JSX\.Element|Element/.test(type)
-    const isComponent = isIconType || isNodeType
-
-    fields.push({
-      name,
-      type,
-      optional,
-      isComponent,
-      ...(isComponent ? { componentKind: isIconType ? ('icon' as const) : ('node' as const) } : {}),
-    })
-  }
-
-  return fields.length > 0 ? fields : null
-}
+import type {
+  JcComponentMeta,
+  JcControlType,
+  JcPlugin,
+  JcPropMeta,
+  JcResolvedPluginItem,
+  JcStructuredField,
+} from '../types.js'
+import { getDefaultItemKey, getPluginForProp } from './plugins.js'
 
 /** Determine the control type for a prop */
 export function resolveControlType(prop: JcPropMeta): JcControlType {
   // Component-type props get a dedicated control
   if (prop.componentKind) return 'component'
+
+  // Props with pre-extracted structured fields — array or object based on type
+  if (prop.structuredFields) {
+    return prop.type.endsWith('[]') ? 'array' : 'object'
+  }
 
   if (prop.values && prop.values.length > 0) return 'select'
   if (prop.type === 'boolean') return 'boolean'
@@ -95,12 +52,12 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
  * Returns the item type ('string', 'number', etc.) or null if not an array.
  *
  * Also resolves the item "kind" — is each item a primitive, or a component/icon?
- * This is determined by checking the raw type for known component patterns.
+ * Prefers pre-extracted `structuredFields` from the AST; falls back to string parsing.
  */
 export function getArrayItemType(prop: JcPropMeta): {
   itemType: string
   isComponent: boolean
-  structuredFields?: StructuredField[]
+  structuredFields?: JcStructuredField[]
 } | null {
   if (!prop.type.endsWith('[]')) return null
   const itemType = prop.type.slice(0, -2)
@@ -113,10 +70,8 @@ export function getArrayItemType(prop: JcPropMeta): {
     (/ReactNode|ReactElement|JSX\.Element|Element/.test(itemType) ||
       !!(prop.rawType && /Icon|Component|Element/.test(prop.rawType)))
 
-  // Parse structured object fields when the item type is an object literal
-  const structuredFields = isStructuredObject
-    ? (parseStructuredFields(itemType) ?? undefined)
-    : undefined
+  // Structured fields are pre-extracted at CLI time via the TypeScript type checker
+  const structuredFields = prop.structuredFields
 
   return { itemType, isComponent, structuredFields }
 }
@@ -188,6 +143,8 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
               required: !field.optional,
               description: '',
               isChildren: false,
+              ...(field.values ? { values: field.values } : {}),
+              ...(field.fields ? { structuredFields: field.fields } : {}),
             }
             obj[field.name] = generateFakeValue(field.name, synth)
           }
@@ -217,6 +174,29 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
       return [true, false, true]
     }
     return []
+  }
+
+  // Non-array structured object props (e.g. `contact: ContactInfo`) — generate per-field defaults
+  if (prop.structuredFields) {
+    const obj: Record<string, unknown> = {}
+    for (const field of prop.structuredFields) {
+      if (field.isComponent) {
+        obj[field.name] = undefined // resolved via fixture system
+      } else {
+        // Generate defaults for ALL fields (required + optional) so the editor shows them
+        const synth: JcPropMeta = {
+          name: field.name,
+          type: field.type,
+          required: !field.optional,
+          description: '',
+          isChildren: false,
+          ...(field.values ? { values: field.values } : {}),
+          ...(field.fields ? { structuredFields: field.fields } : {}),
+        }
+        obj[field.name] = generateFakeValue(field.name, synth)
+      }
+    }
+    return prop.required ? obj : undefined
   }
 
   // Object/array types by name heuristic
@@ -272,7 +252,8 @@ export function generateFakeChildren(componentName: string): string {
  */
 export function generateVariedInstances(
   comp: JcComponentMeta,
-  fixtures: JcResolvedFixture[],
+  plugins: JcPlugin[],
+  resolvedItems: JcResolvedPluginItem[],
   userProps: Record<string, unknown>,
   userChildren: string,
   count: number,
@@ -288,7 +269,7 @@ export function generateVariedInstances(
 
   for (let i = 1; i < count; i++) {
     faker.seed(Math.abs(hash + i * 7919))
-    const varied = generateDefaults(comp, fixtures)
+    const varied = generateDefaults(comp, plugins, resolvedItems)
 
     // Overlay: preserve non-string user edits (booleans, numbers, selects, fixtures)
     for (const [key, userVal] of Object.entries(userProps)) {
@@ -319,17 +300,20 @@ export function generateVariedInstances(
  */
 export function generateDefaults(
   comp: JcComponentMeta,
-  fixtures: JcResolvedFixture[],
+  plugins: JcPlugin[],
+  resolvedItems: JcResolvedPluginItem[],
 ): Record<string, unknown> {
   const values: Record<string, unknown> = {}
   for (const [name, prop] of Object.entries(comp.props)) {
     const base = generateFakeValue(name, prop)
-    if (base === undefined && prop.componentKind && fixtures.length > 0 && prop.required) {
-      if (prop.componentKind === 'icon') {
-        // Icon props → pick first matching fixture
-        values[name] = getDefaultFixtureKey(fixtures, prop.componentKind)
+    if (base === undefined && prop.componentKind && resolvedItems.length > 0 && prop.required) {
+      // Check if a non-fallback plugin matches this prop — if so, pick its first item as default.
+      // Fallback plugins (priority < 0, like component fixtures) don't auto-populate defaults.
+      const matchingPlugin = getPluginForProp(prop, plugins)
+      if (matchingPlugin && (matchingPlugin.priority ?? 0) >= 0) {
+        values[name] = getDefaultItemKey(prop, plugins, resolvedItems)
       } else {
-        // Node/element props → default to text (consistent with text/fixture toggle)
+        // No plugin match or fallback plugin → default to text
         values[name] = generateFakeChildren(comp.displayName)
       }
     } else {

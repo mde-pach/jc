@@ -1,17 +1,16 @@
 'use client'
 
-import type { JcMeta } from 'jc'
-import { ShowcaseApp } from 'jc'
+import { ShowcaseApp, loadMeta } from 'jc'
 import meta from '@/jc/generated/meta.json'
 import { registry } from '@/jc/generated/registry'
-import { lucideFixtures } from './fixtures'
+import { lucidePlugin } from './fixtures'
 
 export default function ShowcasePage() {
   return (
     <ShowcaseApp
-      meta={meta as unknown as JcMeta}
+      meta={loadMeta(meta)}
       registry={registry}
-      fixtures={[lucideFixtures]}
+      plugins={[lucidePlugin]}
     />
   )
 }

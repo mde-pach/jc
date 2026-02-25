@@ -10,13 +10,13 @@ import type {
   JcComponentPropKind,
   JcControlType,
   JcMeta,
+  JcPlugin,
   JcPropMeta,
-  JcResolvedFixture,
+  JcResolvedPluginItem,
 } from '../../types.js'
-import { ArrayEditor } from './array-editor.js'
+import { ArrayEditor, StructuredItemEditor } from './array-editor.js'
 import { ComponentFixtureEditor } from './component-fixture-editor.js'
 import { ComponentPicker } from './component-picker.js'
-import { NodeFieldInput } from './node-field-input.js'
 import { inputStyle } from './styles.js'
 
 interface ShowcaseFieldProps {
@@ -26,13 +26,17 @@ interface ShowcaseFieldProps {
   value: unknown
   options?: string[]
   componentKind?: JcComponentPropKind
-  fixtures?: JcResolvedFixture[]
+  resolvedItems?: JcResolvedPluginItem[]
+  plugins?: JcPlugin[]
   /** Full prop metadata — needed for array controls to infer item type */
   propMeta?: JcPropMeta
   /** Full meta — needed to look up fixture component metadata */
   meta?: JcMeta
   /** Per-slot fixture overrides for component fixture props */
   fixtureOverrides?: Record<string, FixtureOverride>
+  /** Custom picker from the matching plugin (replaces default dropdown) */
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
   onFixturePropChange?: (slotKey: string, propName: string, value: unknown) => void
   onFixtureChildrenChange?: (slotKey: string, text: string) => void
   onChange: (value: unknown) => void
@@ -45,10 +49,12 @@ export function ShowcaseField({
   value,
   options,
   componentKind,
-  fixtures,
+  resolvedItems,
+  plugins,
   propMeta,
   meta,
   fixtureOverrides,
+  Picker,
   onFixturePropChange,
   onFixtureChildrenChange,
   onChange,
@@ -58,7 +64,7 @@ export function ShowcaseField({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.7 }}>{label}</span>
-          {controlType === 'component' && (
+          {controlType === 'component' && componentKind && (
             <span
               style={{
                 fontSize: '8px',
@@ -71,23 +77,26 @@ export function ShowcaseField({
                 color: 'var(--jc-accent)',
               }}
             >
-              {componentKind === 'icon' ? 'icon' : 'node'}
+              {componentKind}
             </span>
           )}
-          {controlType === 'array' && propMeta && (
+          {(controlType === 'array' || controlType === 'object') && propMeta && (
             <span
+              title={propMeta.type}
               style={{
                 fontSize: '8px',
                 fontWeight: 600,
-                textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 padding: '1px 4px',
                 borderRadius: '3px',
                 backgroundColor: 'color-mix(in srgb, var(--jc-accent) 15%, transparent)',
                 color: 'var(--jc-accent)',
+                cursor: 'help',
               }}
             >
-              {propMeta.type}
+              {propMeta.rawType && propMeta.rawType !== propMeta.type
+                ? propMeta.rawType
+                : propMeta.type}
             </span>
           )}
         </div>
@@ -163,22 +172,19 @@ export function ShowcaseField({
         </select>
       )}
 
-      {controlType === 'component' &&
-        (componentKind === 'icon' ? (
-          <ComponentPicker
-            value={String(value ?? '')}
-            kind="icon"
-            fixtures={fixtures ?? []}
-            required={propMeta?.required ?? false}
-            onChange={(v) => onChange(v)}
-          />
-        ) : (
-          <NodeFieldInput value={value} fixtures={fixtures ?? []} onChange={onChange} />
-        ))}
+      {controlType === 'component' && (
+        <ComponentPicker
+          value={String(value ?? '')}
+          resolvedItems={resolvedItems ?? []}
+          required={propMeta?.required ?? false}
+          onChange={(v) => onChange(v)}
+          Picker={Picker}
+        />
+      )}
 
       {/* Editable fixture props when a component fixture is selected */}
       {controlType === 'component' &&
-        componentKind !== 'icon' &&
+        !Picker &&
         meta &&
         fixtureOverrides &&
         onFixturePropChange &&
@@ -189,7 +195,8 @@ export function ShowcaseField({
             slotKey={`prop:${label}`}
             qualifiedKey={value}
             meta={meta}
-            fixtures={fixtures ?? []}
+            resolvedItems={resolvedItems ?? []}
+            plugins={plugins ?? []}
             fixtureOverrides={fixtureOverrides}
             onFixturePropChange={onFixturePropChange}
             onFixtureChildrenChange={onFixtureChildrenChange}
@@ -225,11 +232,26 @@ export function ShowcaseField({
         />
       )}
 
+      {controlType === 'object' && propMeta?.structuredFields && (
+        <StructuredItemEditor
+          item={
+            typeof value === 'object' && value !== null && !Array.isArray(value)
+              ? (value as Record<string, unknown>)
+              : {}
+          }
+          fields={propMeta.structuredFields}
+          resolvedItems={resolvedItems ?? []}
+          Picker={Picker}
+          onChange={(v) => onChange(v)}
+        />
+      )}
+
       {controlType === 'array' && propMeta && (
         <ArrayEditor
           value={Array.isArray(value) ? value : []}
           propMeta={propMeta}
-          fixtures={fixtures ?? []}
+          resolvedItems={resolvedItems ?? []}
+          Picker={Picker}
           onChange={onChange}
         />
       )}

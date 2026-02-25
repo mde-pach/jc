@@ -9,12 +9,19 @@ import {
   useRef,
   useState,
 } from 'react'
-import { buildComponentFixtures, resolveFixturePlugins } from '../lib/fixtures.js'
+import { buildComponentFixturesPlugin, resolveComponentFixtureItems } from '../lib/fixtures.js'
+import { loadMeta } from '../lib/load-meta.js'
+import { normalizePlugin, resolvePluginItems } from '../lib/plugins.js'
+import {
+  ShowcaseProvider,
+  type ShowcaseContextValue,
+  useShowcaseContext,
+} from '../lib/showcase-context.js'
 import { THEME } from '../lib/theme-vars.js'
 import { getViewportFromUrl, setViewportInUrl } from '../lib/url-sync.js'
 import { useShowcaseState } from '../lib/use-showcase-state.js'
 import { useTheme } from '../lib/use-theme.js'
-import type { JcComponentMeta, JcFixturePlugin, JcMeta } from '../types.js'
+import type { JcComponentMeta, JcMeta, JcPlugin } from '../types.js'
 import { ShowcaseControls } from './showcase-controls.js'
 import { ShowcasePreview } from './showcase-preview.js'
 import { ShowcaseSidebar } from './showcase-sidebar.js'
@@ -30,16 +37,17 @@ export interface ShowcaseRenderContext {
 }
 
 interface ShowcaseAppProps {
-  /** Component metadata extracted by the jc CLI */
-  meta: JcMeta
+  /** Component metadata extracted by the jc CLI — accepts raw JSON import (no cast needed) */
+  meta: JcMeta | unknown
   /** Lazy component loaders keyed by display name */
   // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
   registry: Record<string, () => Promise<ComponentType<any>>>
   /**
-   * Optional fixture plugins providing real components (icons, badges, etc.)
+   * Plugins providing real components (icons, badges, etc.)
    * for the showcase to use in prop values and children.
+   * Each plugin declares what prop types it handles via `match`.
    */
-  fixtures?: JcFixturePlugin[]
+  plugins?: Array<JcPlugin | (() => JcPlugin)>
   /**
    * Optional wrapper component applied around each previewed component.
    * Use this to inject context providers (theme, router, i18n, etc.)
@@ -65,24 +73,43 @@ interface ShowcaseAppProps {
  * Accepts optional `children` render prop for custom layouts.
  */
 export function ShowcaseApp({
-  meta,
+  meta: rawMeta,
   registry,
-  fixtures,
+  plugins: rawPlugins,
   wrapper,
   initialComponent,
   syncUrl = true,
   children,
 }: ShowcaseAppProps) {
-  const resolvedBaseFixtures = useMemo(() => resolveFixturePlugins(fixtures), [fixtures])
-  const componentFixturePlugin = useMemo(
-    () => buildComponentFixtures(meta, registry, resolvedBaseFixtures),
-    [meta, registry, resolvedBaseFixtures],
+  const meta = useMemo(() => loadMeta(rawMeta) as JcMeta, [rawMeta])
+  // Normalize plugin factories → JcPlugin[], then build auto-generated component fixtures plugin
+  const userPlugins = useMemo(
+    () => (rawPlugins ?? []).map(normalizePlugin),
+    [rawPlugins],
   )
-  const allFixturePlugins = useMemo(
-    () => [...(fixtures ?? []), componentFixturePlugin],
-    [fixtures, componentFixturePlugin],
+  const baseItems = useMemo(() => resolvePluginItems(userPlugins), [userPlugins])
+  const componentFixturesPlugin = useMemo(
+    () => buildComponentFixturesPlugin(meta, registry, userPlugins, baseItems),
+    [meta, registry, userPlugins, baseItems],
   )
-  const state = useShowcaseState(meta, allFixturePlugins, { syncUrl, initialComponent })
+  const allPlugins = useMemo(
+    () => [...userPlugins, componentFixturesPlugin],
+    [userPlugins, componentFixturesPlugin],
+  )
+  // Resolve component fixture items separately (they need render functions with registry access)
+  const componentFixtureItems = useMemo(
+    () => resolveComponentFixtureItems(meta, registry, userPlugins, baseItems),
+    [meta, registry, userPlugins, baseItems],
+  )
+  // Merge base plugin items + component fixture items into the plugins' resolved items
+  const allResolvedItems = useMemo(
+    () => [...baseItems, ...componentFixtureItems],
+    [baseItems, componentFixtureItems],
+  )
+  // Pass allPlugins to useShowcaseState — it will resolvePluginItems internally,
+  // but the component fixture items have custom render functions that need the
+  // merged list. So we override by passing allPlugins + pre-resolved items.
+  const state = useShowcaseState(meta, allPlugins, { syncUrl, initialComponent })
   const { theme, mode, cycle } = useTheme()
   const vars = THEME[theme]
   const wrapperMetas = useMemo(() => {
@@ -112,21 +139,37 @@ export function ShowcaseApp({
     [syncUrl],
   )
 
-  // Custom layout via render prop
+  // Build context value for the provider
+  const ctxValue = useMemo<ShowcaseContextValue>(
+    () => ({
+      state,
+      meta,
+      resolvedItems: allResolvedItems,
+      plugins: allPlugins,
+      wrapperMetas,
+      registry,
+      wrapper,
+    }),
+    [state, meta, allResolvedItems, allPlugins, wrapperMetas, registry, wrapper],
+  )
+
+  // Custom layout via render prop — still wrapped in provider for context access
   if (children) {
     return (
-      <div
-        className="jc-showcase"
-        style={{ ...vars, color: 'var(--jc-fg)' } as React.CSSProperties}
-      >
-        {children({ state, wrapperMetas, theme, vars })}
-      </div>
+      <ShowcaseProvider value={ctxValue}>
+        <div
+          className="jc-showcase"
+          style={{ ...vars, color: 'var(--jc-fg)' } as React.CSSProperties}
+        >
+          {children({ state, wrapperMetas, theme, vars })}
+        </div>
+      </ShowcaseProvider>
     )
   }
 
   // Default full-app layout
   return (
-    <>
+    <ShowcaseProvider value={ctxValue}>
       <style>{`
         .jc-showcase *::-webkit-scrollbar { display: none; }
         .jc-showcase * { scrollbar-width: none; }
@@ -177,18 +220,10 @@ export function ShowcaseApp({
           </div>
         </header>
 
-        {/* Main area */}
-        <ResizableLayout
-          state={state}
-          meta={meta}
-          registry={registry}
-          wrapper={wrapper}
-          activeViewport={activeViewport}
-          theme={theme}
-          wrapperMetas={wrapperMetas}
-        />
+        {/* Main area — reads from context, no prop drilling */}
+        <ResizableLayout activeViewport={activeViewport} theme={theme} />
       </div>
-    </>
+    </ShowcaseProvider>
   )
 }
 
@@ -259,25 +294,19 @@ function ResizeHandle({
 }
 
 // ── Resizable three-column layout ──────────────────────────
+//
+// Reads all data from ShowcaseContext — no prop drilling from ShowcaseApp.
 
 function ResizableLayout({
-  state,
-  meta,
-  registry,
-  wrapper,
   activeViewport,
   theme,
-  wrapperMetas,
 }: {
-  state: ReturnType<typeof useShowcaseState>
-  meta: JcMeta
-  // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
-  registry: Record<string, () => Promise<ComponentType<any>>>
-  wrapper?: ComponentType<{ children: ReactNode }>
   activeViewport: (typeof VIEWPORTS)[number]
   theme: 'light' | 'dark'
-  wrapperMetas: JcComponentMeta[]
 }) {
+  // Read everything from context instead of props
+  const { state, meta, resolvedItems, plugins, wrapperMetas, registry, wrapper } = useShowcaseContext()
+
   const [sidebarW, setSidebarW] = useState(SIDEBAR_MIN)
   const [controlsW, setControlsW] = useState(CONTROLS_MIN)
 
@@ -327,7 +356,8 @@ function ResizableLayout({
               component={state.selectedComponent}
               propValues={state.propValues}
               childrenItems={state.childrenItems}
-              fixtures={state.resolvedFixtures}
+              resolvedItems={resolvedItems}
+              plugins={plugins}
               meta={meta}
               fixtureOverrides={state.fixtureOverrides}
               wrapperPropsMap={state.wrapperPropsMap}
@@ -371,7 +401,8 @@ function ResizableLayout({
                 component={state.selectedComponent}
                 propValues={state.propValues}
                 childrenItems={state.childrenItems}
-                fixtures={state.resolvedFixtures}
+                resolvedItems={resolvedItems}
+                plugins={plugins}
                 meta={meta}
                 fixtureOverrides={state.fixtureOverrides}
                 onPropChange={state.setPropValue}
@@ -395,3 +426,4 @@ function ResizableLayout({
     </div>
   )
 }
+

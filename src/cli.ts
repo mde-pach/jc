@@ -5,6 +5,8 @@
  *   npx jc extract                    # Uses jc.config.ts or defaults
  *   npx jc extract --config path.ts   # Custom config file
  *   npx jc extract --watch            # Re-extract on file changes
+ *   npx jc extract --json             # Output machine-readable JSON to stdout
+ *   npx jc extract --verbose          # Show detailed extraction info
  */
 
 import { existsSync, watch } from 'node:fs'
@@ -40,16 +42,61 @@ async function loadConfig(projectRoot: string, configPath?: string): Promise<Par
   return {}
 }
 
-function runExtract(projectRoot: string, config: JcConfig): void {
+interface RunOptions {
+  json?: boolean
+  verbose?: boolean
+}
+
+function runExtract(projectRoot: string, config: JcConfig, options: RunOptions = {}): void {
   try {
-    const meta = extract(projectRoot, config)
-    writeOutput(projectRoot, config, meta)
+    const result = extract(projectRoot, config)
+
+    if (options.json) {
+      // Machine-readable output for CI
+      const output = {
+        components: result.meta.components.map((c) => ({
+          name: c.displayName,
+          file: c.filePath,
+          props: Object.keys(c.props).length,
+          exportType: c.exportType ?? 'named',
+          acceptsChildren: c.acceptsChildren,
+          childrenType: c.childrenType,
+        })),
+        warnings: result.warnings,
+        stats: result.stats,
+      }
+      process.stdout.write(`${JSON.stringify(output, null, 2)}\n`)
+    }
+
+    if (options.verbose && result.warnings.length > 0) {
+      console.log('\n[jc] Warnings:')
+      for (const w of result.warnings) {
+        switch (w.type) {
+          case 'FILE_PARSE_ERROR':
+            console.log(`  ✗ ${w.file}: ${w.error}`)
+            break
+          case 'FILE_SKIPPED':
+            console.log(`  ○ ${w.file}: ${w.reason}`)
+            break
+          case 'PROP_FALLBACK':
+            console.log(`  △ ${w.component}.${w.prop}: fell back to ${w.from} detection`)
+            break
+          case 'COMPONENT_SKIPPED':
+            console.log(`  ○ ${w.component}: ${w.reason}`)
+            break
+        }
+      }
+      console.log('')
+    }
+
+    writeOutput(projectRoot, config, result.meta)
   } catch (err) {
     console.error(`[jc] Extraction failed: ${err}`)
+    process.exit(1)
   }
 }
 
-function startWatch(projectRoot: string, config: JcConfig): void {
+function startWatch(projectRoot: string, config: JcConfig, options: RunOptions): void {
   // Resolve the component directory from the glob pattern
   const globBase = config.componentGlob.split('*')[0].replace(/\/$/, '') || '.'
   const watchDir = resolve(projectRoot, globBase)
@@ -70,7 +117,7 @@ function startWatch(projectRoot: string, config: JcConfig): void {
     debounceTimer = setTimeout(() => {
       const time = new Date().toLocaleTimeString()
       console.log(`\n[jc] ${time} — change detected: ${filename}`)
-      runExtract(projectRoot, config)
+      runExtract(projectRoot, config, options)
     }, 200)
   })
 }
@@ -83,16 +130,20 @@ async function main() {
     const configFlagIdx = args.indexOf('--config')
     const configPath = configFlagIdx >= 0 ? args[configFlagIdx + 1] : undefined
     const watchMode = args.includes('--watch') || args.includes('-w')
+    const jsonMode = args.includes('--json')
+    const verboseMode = args.includes('--verbose') || args.includes('-v')
     const projectRoot = process.cwd()
 
     const userConfig = await loadConfig(projectRoot, configPath)
     const config = resolveConfig(userConfig)
 
+    const options: RunOptions = { json: jsonMode, verbose: verboseMode }
+
     console.log(`[jc] Extracting from ${config.componentGlob}`)
-    runExtract(projectRoot, config)
+    runExtract(projectRoot, config, options)
 
     if (watchMode) {
-      startWatch(projectRoot, config)
+      startWatch(projectRoot, config, options)
     }
   } else if (command === '--help' || command === '-h') {
     console.log(`
@@ -102,6 +153,8 @@ Commands:
   extract              Extract component metadata and generate registry
     --config <path>    Path to config file (default: jc.config.ts)
     --watch, -w        Re-extract on file changes
+    --json             Output machine-readable JSON to stdout
+    --verbose, -v      Show detailed extraction warnings
 
 Configuration:
   Create a jc.config.ts at your project root:

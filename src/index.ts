@@ -1,28 +1,25 @@
 /**
  * just-components (jc) — public API
  *
- * Components: ShowcaseApp (root showcase UI) + sub-components
- * Fixtures:   defineFixtures (type-safe plugin builder)
- * State:      useShowcaseState (central hook)
- * Types:      JcMeta, JcComponentMeta, JcFixture, JcFixturePlugin, etc.
+ * This is the main entry point. It exports everything most consumers need:
+ * - ShowcaseApp: the root showcase component
+ * - definePlugin / fromComponents: plugin creation helpers
+ * - loadMeta: type-safe meta.json loader
+ * - All public types
+ *
+ * For custom layouts, state management, sub-components, and internals,
+ * import from 'jc/advanced'.
  */
 
-export { ComponentFixtureEditor, FixturePicker, ShowcaseField } from './components/field/index.js'
-export type { ShowcaseRenderContext } from './components/showcase-app.js'
 // Root app
 export { ShowcaseApp } from './components/showcase-app.js'
-export { ShowcaseControls } from './components/showcase-controls.js'
-// Sub-components
-export { ShowcasePreview } from './components/showcase-preview.js'
-export { ShowcaseSidebar } from './components/showcase-sidebar.js'
-export { ThemeToggle } from './components/theme-toggle.js'
-export { ViewportPicker } from './components/viewport-picker.js'
-// Utilities
-export { defineFixtures, resolveFixturePlugins, resolveFixtureValue } from './lib/fixtures.js'
-export { useResolvedComponent } from './lib/use-resolved-component.jsx'
-export type { FixtureOverride, ShowcaseState } from './lib/use-showcase-state.js'
-// State
-export { useShowcaseState } from './lib/use-showcase-state.js'
+export type { ShowcaseRenderContext } from './components/showcase-app.js'
+
+// Plugin system
+export { definePlugin, fromComponents } from './lib/plugins.js'
+
+// Meta loader (eliminates the `as unknown as JcMeta` cast for JSON imports)
+export { loadMeta } from './lib/load-meta.js'
 
 // Theme
 export type { JcTheme } from './lib/use-theme.js'
@@ -30,12 +27,19 @@ export type { JcTheme } from './lib/use-theme.js'
 // Types
 export type {
   ChildItem,
+  ExtractionResult,
+  ExtractionWarning,
+  JcChildrenType,
   JcComponentMeta,
+  JcComponentPropKind,
   JcConfig,
   JcControlType,
-  JcFixture,
-  JcFixturePlugin,
   JcMeta,
+  JcPlugin,
+  JcPluginItem,
+  JcPluginMatch,
+  JcPluginPickerProps,
   JcPropMeta,
-  JcResolvedFixture,
+  JcResolvedPluginItem,
+  JcStructuredField,
 } from './types.js'

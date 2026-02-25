@@ -4,25 +4,27 @@
  * Generic array editor.
  * Renders a list of items with per-item inputs inferred from the
  * array's item type. Supports string, number, boolean, and
- * component/icon items (via fixture picker).
+ * component items (via plugin picker or dropdown).
  */
 
-import { generateFakeValue, getArrayItemType, type StructuredField } from '../../lib/faker-map.js'
-import { getFixturesForKind } from '../../lib/fixtures.js'
-import type { JcPropMeta, JcResolvedFixture } from '../../types.js'
-import { IconPickerButton } from './icon-picker.js'
+import { generateFakeValue, getArrayItemType } from '../../lib/faker-map.js'
+import type { JcPropMeta, JcResolvedPluginItem, JcStructuredField } from '../../types.js'
+import { ComponentPicker } from './component-picker.js'
 import { NodeFieldInput } from './node-field-input.js'
 import { inputStyle } from './styles.js'
 
 export function ArrayEditor({
   value,
   propMeta,
-  fixtures,
+  resolvedItems,
+  Picker,
   onChange,
 }: {
   value: unknown[]
   propMeta: JcPropMeta
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
   onChange: (value: unknown) => void
 }) {
   const itemInfo = getArrayItemType(propMeta)
@@ -54,6 +56,8 @@ export function ArrayEditor({
             required: !field.optional,
             description: '',
             isChildren: false,
+            ...(field.values ? { values: field.values } : {}),
+            ...(field.fields ? { structuredFields: field.fields } : {}),
           }
           obj[field.name] = generateFakeValue(field.name, synth)
         }
@@ -61,7 +65,7 @@ export function ArrayEditor({
       onChange([...value, obj])
     } else if (isComponent) {
       // Add first fixture key or empty string
-      onChange([...value, fixtures[0]?.qualifiedKey ?? ''])
+      onChange([...value, resolvedItems[0]?.qualifiedKey ?? ''])
     } else if (itemType === 'number') {
       onChange([...value, 0])
     } else if (itemType === 'boolean') {
@@ -100,7 +104,8 @@ export function ArrayEditor({
               <StructuredItemEditor
                 item={item as Record<string, unknown>}
                 fields={structuredFields}
-                fixtures={fixtures}
+                resolvedItems={resolvedItems}
+                Picker={Picker}
                 onChange={(v) => updateItem(i, v)}
               />
             ) : (
@@ -108,7 +113,8 @@ export function ArrayEditor({
                 value={item}
                 itemType={itemType}
                 isComponent={isComponent}
-                fixtures={fixtures}
+                resolvedItems={resolvedItems}
+                Picker={Picker}
                 onChange={(v) => updateItem(i, v)}
               />
             )}
@@ -134,7 +140,19 @@ export function ArrayEditor({
               marginTop: structuredFields ? '4px' : 0,
             }}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       ))}
@@ -166,15 +184,18 @@ export function ArrayEditor({
 
 // ── Structured item editor ───────────────────────────────────
 
-function StructuredItemEditor({
+export function StructuredItemEditor({
   item,
   fields,
-  fixtures,
+  resolvedItems,
+  Picker,
   onChange,
 }: {
   item: Record<string, unknown>
-  fields: StructuredField[]
-  fixtures: JcResolvedFixture[]
+  fields: JcStructuredField[]
+  resolvedItems: JcResolvedPluginItem[]
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
   onChange: (value: Record<string, unknown>) => void
 }) {
   const updateField = (fieldName: string, fieldValue: unknown) => {
@@ -211,7 +232,8 @@ function StructuredItemEditor({
             <StructuredFieldInput
               field={field}
               value={item[field.name]}
-              fixtures={fixtures}
+              resolvedItems={resolvedItems}
+              Picker={Picker}
               onChange={(v) => updateField(field.name, v)}
             />
           </div>
@@ -223,37 +245,74 @@ function StructuredItemEditor({
 
 /**
  * Per-field input for a structured object — dispatches based on field type.
- * - Icon-kind components -> IconPickerButton
+ * - Component fields -> ComponentPicker (delegates to plugin Picker if available)
  * - Node-kind components (ReactNode) -> text/fixture toggle
  * - Primitives -> matching input (text, number, boolean)
  */
 function StructuredFieldInput({
   field,
   value,
-  fixtures,
+  resolvedItems,
+  Picker,
   onChange,
 }: {
-  field: StructuredField
+  field: JcStructuredField
   value: unknown
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
   onChange: (value: unknown) => void
 }) {
-  // Icon-kind component -> icon picker grid
-  if (field.isComponent && field.componentKind === 'icon') {
-    const kindFixtures = getFixturesForKind(fixtures, 'icon')
+  // Component field with a plugin picker (e.g. icons, avatars) -> delegate to plugin
+  if (field.isComponent && Picker) {
     return (
-      <IconPickerButton
+      <ComponentPicker
         value={String(value ?? '')}
-        fixtures={kindFixtures}
+        resolvedItems={resolvedItems}
         required={!field.optional}
-        onChange={onChange}
+        onChange={(v) => onChange(v)}
+        Picker={Picker}
       />
     )
   }
 
-  // Node-kind component (ReactNode) -> text/fixture toggle
+  // Component field without plugin picker -> text/fixture toggle
   if (field.isComponent) {
-    return <NodeFieldInput value={value} fixtures={fixtures} onChange={onChange} />
+    return <NodeFieldInput value={value} resolvedItems={resolvedItems} onChange={onChange} />
+  }
+
+  // Nested structured object (e.g. `address: Address` with sub-fields) → recursive editor
+  if (field.fields && field.fields.length > 0) {
+    const obj =
+      typeof value === 'object' && value !== null && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {}
+    return (
+      <StructuredItemEditor
+        item={obj}
+        fields={field.fields}
+        resolvedItems={resolvedItems}
+        onChange={(v) => onChange(v)}
+      />
+    )
+  }
+
+  // Enum / string literal union → select dropdown
+  if (field.values && field.values.length > 0) {
+    return (
+      <select
+        value={String(value ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        style={inputStyle}
+      >
+        {field.optional && <option value="">—</option>}
+        {field.values.map((v) => (
+          <option key={v} value={v}>
+            {v}
+          </option>
+        ))}
+      </select>
+    )
   }
 
   // Boolean
@@ -303,23 +362,27 @@ function ArrayItemInput({
   value,
   itemType,
   isComponent,
-  fixtures,
+  resolvedItems,
+  Picker,
   onChange,
 }: {
   value: unknown
   itemType: string
   isComponent: boolean
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
   onChange: (value: unknown) => void
 }) {
-  // Component/icon items — use compact icon picker
-  if (isComponent && fixtures.length > 0) {
+  // Component items — delegate to plugin Picker or fallback dropdown
+  if (isComponent && resolvedItems.length > 0) {
     return (
-      <IconPickerButton
+      <ComponentPicker
         value={String(value ?? '')}
-        fixtures={fixtures}
+        resolvedItems={resolvedItems}
         required={true}
-        onChange={onChange}
+        onChange={(v) => onChange(v)}
+        Picker={Picker}
       />
     )
   }

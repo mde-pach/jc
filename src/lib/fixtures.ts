@@ -1,9 +1,8 @@
 /**
  * Fixture resolution utilities.
  *
- * Host apps provide JcFixturePlugin[] → this module flattens them into
- * JcResolvedFixture[] with qualified keys ('pluginName/key') that are
- * stored in prop values and resolved to real ReactNodes at render time.
+ * Builds on the plugin system to provide component-level fixture generation,
+ * eager component loading, and code generation helpers.
  */
 
 import {
@@ -14,51 +13,20 @@ import {
   useEffect,
   useState,
 } from 'react'
-import type { JcFixturePlugin, JcMeta, JcResolvedFixture } from '../types.js'
+import type { JcMeta, JcPlugin, JcPropMeta, JcResolvedPluginItem } from '../types.js'
 import { generateDefaults, generateFakeChildren } from './faker-map.js'
-import { toPascalCase } from './utils.js'
-
-/**
- * Flatten an array of fixture plugins into a single resolved list.
- * Each fixture receives a `qualifiedKey` ('pluginName/key') and `pluginName`.
- */
-export function resolveFixturePlugins(plugins: JcFixturePlugin[] | undefined): JcResolvedFixture[] {
-  if (!plugins || plugins.length === 0) return []
-
-  const resolved: JcResolvedFixture[] = []
-  for (const plugin of plugins) {
-    for (const fixture of plugin.fixtures) {
-      resolved.push({
-        ...fixture,
-        pluginName: plugin.name,
-        qualifiedKey: `${plugin.name}/${fixture.key}`,
-      })
-    }
-  }
-  return resolved
-}
-
-/**
- * Look up a fixture by its qualified key.
- * If `asConstructor` is true and the fixture has a `component` field,
- * returns the raw component constructor (for icon-kind props like LucideIcon).
- * Otherwise calls render() to return a ReactElement.
- */
-export function resolveFixtureValue(
-  qualifiedKey: string | null | undefined,
-  fixtures: JcResolvedFixture[],
-  asConstructor?: boolean,
-): unknown {
-  if (!qualifiedKey) return undefined
-  const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
-  if (!fixture) return undefined
-  if (asConstructor && fixture.component) return fixture.component
-  return fixture.render()
-}
+import { getPluginForProp, resolveItemValue, resolvePluginItems } from './plugins.js'
+import {
+  COMPONENT_FIXTURE_CATEGORY,
+  COMPONENT_FIXTURE_PREFIX,
+  EAGER_LOADER_CHILDREN_KEY,
+  EAGER_LOADER_PROPS_KEY,
+  toPascalCase,
+} from './utils.js'
 
 /**
  * Render a component fixture with custom override props.
- * Instead of using the static `render()` from the fixture, this loads the
+ * Instead of using the static `render()` from the item, this loads the
  * component lazily and applies the provided overrides for interactive editing.
  */
 export function renderComponentFixture(
@@ -67,11 +35,12 @@ export function renderComponentFixture(
   meta: JcMeta,
   // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
   registry: Record<string, () => Promise<ComponentType<any>>>,
-  baseFixtures: JcResolvedFixture[],
+  plugins: JcPlugin[],
+  resolvedItems: JcResolvedPluginItem[],
 ): ReactNode {
   // Extract component name from "components/Button" → "Button"
-  const compName = qualifiedKey.startsWith('components/')
-    ? qualifiedKey.slice('components/'.length)
+  const compName = qualifiedKey.startsWith(COMPONENT_FIXTURE_PREFIX)
+    ? qualifiedKey.slice(COMPONENT_FIXTURE_PREFIX.length)
     : qualifiedKey
   const comp = meta.components.find((c) => c.displayName === compName)
   if (!comp || !registry[compName]) return null
@@ -80,68 +49,39 @@ export function renderComponentFixture(
 
   // Build resolved props from overrides
   const resolvedProps: Record<string, unknown> = {
-    ...(overrides?.props ?? generateDefaults(comp, baseFixtures)),
+    ...(overrides?.props ?? generateDefaults(comp, plugins, resolvedItems)),
   }
 
-  // Resolve icon fixture keys to actual constructors
+  // Resolve constructor-type fixture keys to actual constructors
   for (const [propName, prop] of Object.entries(comp.props)) {
-    if (prop.componentKind === 'icon' && typeof resolvedProps[propName] === 'string') {
-      const resolved = resolveFixtureValue(resolvedProps[propName] as string, baseFixtures, true)
-      if (resolved !== undefined) resolvedProps[propName] = resolved
+    if (typeof resolvedProps[propName] === 'string') {
+      const matchingPlugin = getPluginForProp(prop, plugins)
+      if (matchingPlugin?.asConstructor) {
+        const resolved = resolveItemValue(resolvedProps[propName] as string, resolvedItems, true)
+        if (resolved !== undefined) resolvedProps[propName] = resolved
+      }
     }
   }
 
   const children =
     overrides?.childrenText ?? (comp.acceptsChildren ? generateFakeChildren(compName) : undefined)
 
-  return createElement(Eager, { __jcProps: resolvedProps, __jcChildren: children || undefined })
+  return createElement(Eager, {
+    [EAGER_LOADER_PROPS_KEY]: resolvedProps,
+    [EAGER_LOADER_CHILDREN_KEY]: children || undefined,
+  })
 }
 
 /** Convert a qualified key to a readable JSX code string, e.g. 'lucide/star' → '<Star />' */
-export function fixtureToCodeString(qualifiedKey: string, fixtures: JcResolvedFixture[]): string {
+export function fixtureToCodeString(
+  qualifiedKey: string,
+  items: JcResolvedPluginItem[],
+): string {
   if (!qualifiedKey) return ''
-  const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
-  if (!fixture) return qualifiedKey
+  const item = items.find((i) => i.qualifiedKey === qualifiedKey)
+  if (!item) return qualifiedKey
 
-  return `<${toPascalCase(fixture.label)} />`
-}
-
-/**
- * Filter fixtures whose `category` matches a `componentKind`.
- * Handles singular/plural mismatches (e.g. kind 'icon' matches category 'icons').
- * If no category-specific matches exist, returns all fixtures as fallback.
- */
-export function getFixturesForKind(
-  fixtures: JcResolvedFixture[],
-  componentKind?: string,
-): JcResolvedFixture[] {
-  if (!componentKind) return fixtures
-  // Match category to kind — if fixture has category 'icons', kind 'icon' matches
-  const kindLower = componentKind.toLowerCase()
-  const filtered = fixtures.filter((f) => {
-    if (!f.category) return true
-    const cat = f.category.toLowerCase()
-    return cat === kindLower || cat === `${kindLower}s` || kindLower.startsWith(cat)
-  })
-  return filtered.length > 0 ? filtered : fixtures
-}
-
-/**
- * Identity helper for type-safe fixture plugin definition in host apps.
- * @example
- * export const lucide = defineFixtures({ name: 'lucide', fixtures: [...] })
- */
-export function defineFixtures(plugin: JcFixturePlugin): JcFixturePlugin {
-  return plugin
-}
-
-/** Get the first fixture key matching a component kind, or undefined */
-export function getDefaultFixtureKey(
-  fixtures: JcResolvedFixture[],
-  componentKind?: string,
-): string | undefined {
-  const matching = getFixturesForKind(fixtures, componentKind)
-  return matching[0]?.qualifiedKey
+  return `<${toPascalCase(item.label)} />`
 }
 
 // ── Eager component loading ───────────────────────────────────
@@ -196,7 +136,11 @@ function getEagerLoader(
   // biome-ignore lint/suspicious/noExplicitAny: wrapper forwards arbitrary props to the loaded component
   const EagerLoader = forwardRef<unknown, any>((props, ref) => {
     // Separate component-specific props from external props (added by Slot/cloneElement)
-    const { __jcProps, __jcChildren, ...externalProps } = props
+    const {
+      [EAGER_LOADER_PROPS_KEY]: __jcProps,
+      [EAGER_LOADER_CHILDREN_KEY]: __jcChildren,
+      ...externalProps
+    } = props
 
     // biome-ignore lint/suspicious/noExplicitAny: dynamic component with unknown prop shape
     const [Comp, setComp] = useState<ComponentType<any> | null>(
@@ -233,20 +177,55 @@ function getEagerLoader(
 // ── Auto-generated component fixtures ────────────────────────
 
 /**
- * Build a fixture plugin that exposes every extracted component as a fixture.
+ * Build a plugin that exposes every extracted component as a plugin item.
  * Each component is rendered with its smart defaults (via `generateDefaults`)
  * and eagerly loaded (no Suspense wrapper) for compatibility with Radix asChild.
  *
  * This allows ReactNode/element slots in the showcase to offer
  * "pick another component" in fixture mode without manual setup.
+ *
+ * Returns a JcPlugin with priority -1 so user plugins always win.
  */
-export function buildComponentFixtures(
+export function buildComponentFixturesPlugin(
   meta: JcMeta,
   // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
   registry: Record<string, () => Promise<ComponentType<any>>>,
-  baseFixtures: JcResolvedFixture[],
-): JcFixturePlugin {
-  const fixtures = meta.components
+  basePlugins: JcPlugin[],
+  baseItems: JcResolvedPluginItem[],
+): JcPlugin {
+  const items = meta.components
+    .filter((comp) => registry[comp.displayName])
+    .map((comp) => {
+      const name = comp.displayName
+      return {
+        key: name,
+        label: name,
+        value: null, // Component fixtures don't use a static value
+      }
+    })
+
+  return {
+    name: COMPONENT_FIXTURE_CATEGORY,
+    match: { kinds: ['element', 'node'] },
+    itemType: 'element' as const,
+    priority: -1,
+    items,
+  }
+}
+
+/**
+ * Resolve component fixture items with proper render() functions.
+ * This is separate from buildComponentFixturesPlugin because the render
+ * functions need access to the registry and base fixtures at call time.
+ */
+export function resolveComponentFixtureItems(
+  meta: JcMeta,
+  // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
+  registry: Record<string, () => Promise<ComponentType<any>>>,
+  basePlugins: JcPlugin[],
+  baseItems: JcResolvedPluginItem[],
+): JcResolvedPluginItem[] {
+  return meta.components
     .filter((comp) => registry[comp.displayName])
     .map((comp) => {
       const name = comp.displayName
@@ -255,30 +234,42 @@ export function buildComponentFixtures(
       return {
         key: name,
         label: name,
-        category: 'components',
+        value: null,
+        pluginName: COMPONENT_FIXTURE_CATEGORY,
+        qualifiedKey: `${COMPONENT_FIXTURE_CATEGORY}/${name}`,
+        keywords: undefined,
         render: (): ReactNode => {
-          const defaults = generateDefaults(comp, baseFixtures)
+          const defaults = generateDefaults(comp, basePlugins, baseItems)
 
-          // Resolve icon fixture keys to actual constructors
+          // Resolve constructor-type fixture keys to actual constructors
           const resolvedProps: Record<string, unknown> = { ...defaults }
           for (const [propName, prop] of Object.entries(comp.props)) {
-            if (prop.componentKind === 'icon' && typeof resolvedProps[propName] === 'string') {
-              const resolved = resolveFixtureValue(
-                resolvedProps[propName] as string,
-                baseFixtures,
-                true,
-              )
-              if (resolved !== undefined) resolvedProps[propName] = resolved
+            if (typeof resolvedProps[propName] === 'string') {
+              const matchingPlugin = getPluginForProp(prop, basePlugins)
+              if (matchingPlugin?.asConstructor) {
+                const resolved = resolveItemValue(
+                  resolvedProps[propName] as string,
+                  baseItems,
+                  true,
+                )
+                if (resolved !== undefined) resolvedProps[propName] = resolved
+              }
             }
           }
 
           // Generate children text if the component accepts children
           const children = comp.acceptsChildren ? generateFakeChildren(name) : undefined
 
-          return createElement(Eager, { __jcProps: resolvedProps, __jcChildren: children })
+          return createElement(Eager, {
+            [EAGER_LOADER_PROPS_KEY]: resolvedProps,
+            [EAGER_LOADER_CHILDREN_KEY]: children,
+          })
         },
+        renderPreview: (): ReactNode => {
+          // For component fixtures, renderPreview shows a small text label
+          return createElement('span', { style: { fontSize: '9px', opacity: 0.6 } }, name)
+        },
+        getValue: () => null,
       }
     })
-
-  return { name: 'components', fixtures }
 }

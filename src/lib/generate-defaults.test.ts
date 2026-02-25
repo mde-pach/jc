@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { JcComponentMeta, JcResolvedFixture } from '../types.js'
+import type { JcComponentMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
 import { generateDefaults } from './faker-map.js'
 
 function makeComponent(overrides: Partial<JcComponentMeta> = {}): JcComponentMeta {
@@ -13,30 +13,50 @@ function makeComponent(overrides: Partial<JcComponentMeta> = {}): JcComponentMet
   }
 }
 
-const fixtures: JcResolvedFixture[] = [
+const plugins: JcPlugin[] = [
+  {
+    name: 'lucide',
+    match: { types: ['LucideIcon'], kinds: ['icon'] },
+    items: [
+      { key: 'star', label: 'Star', value: () => null },
+    ],
+  },
+  {
+    name: 'custom',
+    match: { kinds: ['element', 'node'] },
+    items: [
+      { key: 'badge', label: 'Badge', value: () => null },
+    ],
+    priority: -1,
+  },
+]
+
+const resolvedItems: JcResolvedPluginItem[] = [
   {
     key: 'star',
     label: 'Star',
-    category: 'icons',
+    value: () => null,
     pluginName: 'lucide',
     qualifiedKey: 'lucide/star',
     render: () => 'star-node',
-    // biome-ignore lint/suspicious/noExplicitAny: test mock — JcFixture.component expects React.ComponentType<any>
-    component: (() => null) as any,
+    renderPreview: () => 'star-icon',
+    getValue: () => () => null,
   },
   {
     key: 'badge',
     label: 'Badge',
-    category: 'elements',
+    value: () => null,
     pluginName: 'custom',
     qualifiedKey: 'custom/badge',
     render: () => 'badge-node',
+    renderPreview: () => 'badge-icon',
+    getValue: () => () => null,
   },
 ]
 
 describe('generateDefaults', () => {
   it('returns empty object for component with no props', () => {
-    const result = generateDefaults(makeComponent(), [])
+    const result = generateDefaults(makeComponent(), [], [])
     expect(result).toEqual({})
   })
 
@@ -52,7 +72,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, [])
+    const result = generateDefaults(comp, [], [])
     expect(typeof result.title).toBe('string')
     expect((result.title as string).length).toBeGreaterThan(0)
   })
@@ -69,7 +89,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, [])
+    const result = generateDefaults(comp, [], [])
     expect(typeof result.count).toBe('number')
   })
 
@@ -86,8 +106,8 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, fixtures)
-    // Should pick the first fixture matching the 'icon' kind (lucide/star has category 'icons')
+    const result = generateDefaults(comp, plugins, resolvedItems)
+    // Should pick the first fixture matching the 'icon' kind (lucide/star via type match)
     expect(result.icon).toBe('lucide/star')
   })
 
@@ -104,7 +124,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, fixtures)
+    const result = generateDefaults(comp, plugins, resolvedItems)
     expect(result.icon).toBeUndefined()
   })
 
@@ -121,7 +141,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, [])
+    const result = generateDefaults(comp, [], [])
     expect(result.icon).toBeUndefined()
   })
 
@@ -138,7 +158,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, [])
+    const result = generateDefaults(comp, [], [])
     expect(result.variant).toBe('primary')
   })
 
@@ -155,7 +175,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, [])
+    const result = generateDefaults(comp, [], [])
     expect(result.variant).toBeUndefined()
   })
 
@@ -186,7 +206,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, fixtures)
+    const result = generateDefaults(comp, plugins, resolvedItems)
     expect(typeof result.title).toBe('string')
     expect(result.disabled).toBe(false)
     // Optional component-kind props start unselected
@@ -206,12 +226,12 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, fixtures)
+    const result = generateDefaults(comp, plugins, resolvedItems)
     // Node-kind props default to generated text, not a fixture key
     expect(typeof result.content).toBe('string')
     expect((result.content as string).length).toBeGreaterThan(0)
     // Must NOT be a fixture key
-    expect(fixtures.some((f) => f.qualifiedKey === result.content)).toBe(false)
+    expect(resolvedItems.some((f) => f.qualifiedKey === result.content)).toBe(false)
   })
 
   it('leaves optional component-kind props unselected even with fixtures', () => {
@@ -227,7 +247,7 @@ describe('generateDefaults', () => {
         },
       },
     })
-    const result = generateDefaults(comp, fixtures)
+    const result = generateDefaults(comp, plugins, resolvedItems)
     expect(result.content).toBeUndefined()
   })
 })

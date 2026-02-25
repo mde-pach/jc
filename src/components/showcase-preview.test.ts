@@ -4,7 +4,7 @@ import {
   formatArrayTokens,
   generateCodeTokens,
 } from '../lib/code-tokens.js'
-import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedPluginItem } from '../types.js'
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -19,24 +19,26 @@ function makeComponent(overrides: Partial<JcComponentMeta> = {}): JcComponentMet
   }
 }
 
-const fixtures: JcResolvedFixture[] = [
+const fixtures: JcResolvedPluginItem[] = [
   {
     key: 'star',
     label: 'Star',
-    category: 'icons',
+    value: (() => null) as unknown,
     pluginName: 'lucide',
     qualifiedKey: 'lucide/star',
     render: () => 'star-node',
-    // biome-ignore lint/suspicious/noExplicitAny: test mock — JcFixture.component expects React.ComponentType<any>
-    component: (() => null) as any,
+    renderPreview: () => 'star-icon',
+    getValue: () => (() => null) as unknown,
   },
   {
     key: 'badge',
     label: 'Status Badge',
-    category: 'elements',
+    value: 'badge-value',
     pluginName: 'custom',
     qualifiedKey: 'custom/badge',
     render: () => 'badge-node',
+    renderPreview: () => 'badge-icon',
+    getValue: () => 'badge-value',
   },
 ]
 
@@ -294,7 +296,7 @@ describe('generateCodeTokens', () => {
     })
     const tokens = generateCodeTokens(comp, { data: { x: 1 } }, [], [])
     const text = tokenText(tokens)
-    expect(text).toContain('data={{"x":1}}')
+    expect(text).toContain('data={{ x: 1 }}')
   })
 })
 
@@ -444,15 +446,17 @@ describe('generateCodeTokens with fixture overrides', () => {
     ],
   }
 
-  const componentFixtures: JcResolvedFixture[] = [
+  const componentFixtures: JcResolvedPluginItem[] = [
     ...fixtures,
     {
       key: 'Button',
       label: 'Button',
-      category: 'components',
+      value: null,
       pluginName: 'components',
       qualifiedKey: 'components/Button',
       render: () => 'button-node',
+      renderPreview: () => 'button-icon',
+      getValue: () => null,
     },
   ]
 

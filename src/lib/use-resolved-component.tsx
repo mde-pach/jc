@@ -8,16 +8,18 @@ import {
   useMemo,
   useState,
 } from 'react'
-import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcPlugin, JcPropMeta, JcResolvedPluginItem } from '../types.js'
 import { getArrayItemType, resolveControlType } from './faker-map.js'
-import { renderComponentFixture, resolveFixtureValue } from './fixtures.js'
+import { renderComponentFixture } from './fixtures.js'
+import { getPluginForProp, resolveItemValue } from './plugins.js'
 import type { FixtureOverride } from './use-showcase-state.js'
 
 interface UseResolvedComponentOptions {
   component: JcComponentMeta
   propValues: Record<string, unknown>
   childrenItems: ChildItem[]
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
   wrapperPropsMap: Record<string, Record<string, unknown>>
@@ -31,7 +33,8 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
     component,
     propValues,
     childrenItems,
-    fixtures,
+    resolvedItems,
+    plugins,
     meta,
     fixtureOverrides,
     wrapperPropsMap,
@@ -126,24 +129,26 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
         const controlType = propMeta ? resolveControlType(propMeta) : null
 
         if (controlType === 'component' && typeof value === 'string') {
-          const isIcon = propMeta?.componentKind === 'icon'
+          const matchingPlugin = propMeta ? getPluginForProp(propMeta, plugins) : null
+          const passAsConstructor = matchingPlugin?.asConstructor ?? false
 
-          if (!isIcon && value.startsWith('components/')) {
+          if (!passAsConstructor && value.startsWith('components/')) {
             const slotKey = `prop:${key}`
             result[key] = renderComponentFixture(
               value,
               fixtureOverrides[slotKey],
               meta,
               registry,
-              fixtures,
+              plugins,
+              resolvedItems,
             )
             continue
           }
 
-          const resolved = resolveFixtureValue(value, fixtures, isIcon)
+          const resolved = resolveItemValue(value, resolvedItems, passAsConstructor)
           if (resolved !== undefined) {
             result[key] = resolved
-          } else if (!isIcon && value) {
+          } else if (!passAsConstructor && value) {
             result[key] = value
           }
           continue
@@ -174,7 +179,7 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
             result[key] = value
               .map((item) => {
                 if (typeof item !== 'string') return item
-                return resolveFixtureValue(item, fixtures, true) ?? item
+                return resolveItemValue(item, resolvedItems, true) ?? item
               })
               .filter(Boolean)
             continue
@@ -186,8 +191,11 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
               const obj = { ...(item as Record<string, unknown>) }
               for (const field of itemInfo.structuredFields!) {
                 if (field.isComponent && typeof obj[field.name] === 'string') {
-                  const isIcon = field.componentKind === 'icon'
-                  const resolved = resolveFixtureValue(obj[field.name] as string, fixtures, isIcon)
+                  // Synthesize a minimal prop to find the matching plugin
+                  const synthProp = { name: field.name, type: field.type, componentKind: field.componentKind } as JcPropMeta
+                  const fieldPlugin = getPluginForProp(synthProp, plugins)
+                  const passAsConstructor = fieldPlugin?.asConstructor ?? false
+                  const resolved = resolveItemValue(obj[field.name] as string, resolvedItems, passAsConstructor)
                   if (resolved !== undefined) {
                     obj[field.name] = resolved
                   }
@@ -203,7 +211,7 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
       }
       return result
     },
-    [component.props, fixtures, fixtureOverrides, meta, registry],
+    [component.props, resolvedItems, plugins, fixtureOverrides, meta, registry],
   )
 
   const cleanProps = useMemo(() => resolveProps(propValues), [resolveProps, propValues])
@@ -221,10 +229,11 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
             fixtureOverrides[slotKey],
             meta,
             registry,
-            fixtures,
+            plugins,
+            resolvedItems,
           ) as ReactNode
         }
-        return resolveFixtureValue(item.value, fixtures) as ReactNode
+        return resolveItemValue(item.value, resolvedItems) as ReactNode
       }
       return item.value || undefined
     }
@@ -236,7 +245,7 @@ export function useResolvedComponent(options: UseResolvedComponentOptions) {
     // Multiple children: resolve each and return as fragment array
     const resolved = childrenItems.map((item, i) => resolveItem(item, i)).filter(Boolean)
     return resolved.length > 0 ? resolved : undefined
-  }, [component.acceptsChildren, childrenItems, fixtures, fixtureOverrides, meta, registry])
+  }, [component.acceptsChildren, childrenItems, resolvedItems, plugins, fixtureOverrides, meta, registry])
 
   // ── Wrap rendered element ────────────────────────────────────────
   const wrapElement = useCallback(

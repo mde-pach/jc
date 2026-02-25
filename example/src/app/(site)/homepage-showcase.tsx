@@ -2,12 +2,13 @@
 
 import meta from '@/jc/generated/meta.json'
 import { registry } from '@/jc/generated/registry'
-import { lucideFixtures } from '@/app/showcase/fixtures'
-import { ShowcaseApp, ShowcaseControls, useResolvedComponent } from 'jc'
+import { lucidePlugin } from '@/app/showcase/fixtures'
+import { ShowcaseApp, loadMeta } from 'jc'
 import type { JcMeta } from 'jc'
+import { ShowcaseControls, useResolvedComponent } from 'jc/advanced'
 import { createElement } from 'react'
 
-const typedMeta = meta as unknown as JcMeta
+const typedMeta = loadMeta(meta) as JcMeta
 
 interface HomepageShowcaseProps {
   componentName: string
@@ -20,7 +21,7 @@ export function HomepageShowcase({ componentName }: HomepageShowcaseProps) {
       <ShowcaseApp
         meta={typedMeta}
         registry={registry}
-        fixtures={[lucideFixtures]}
+        plugins={[lucidePlugin]}
         initialComponent={componentName}
         syncUrl={false}
       >
@@ -41,7 +42,8 @@ export function HomepageShowcase({ componentName }: HomepageShowcaseProps) {
                   component={state.selectedComponent}
                   propValues={state.propValues}
                   childrenItems={state.childrenItems}
-                  fixtures={state.resolvedFixtures}
+                  resolvedItems={state.resolvedItems}
+                  plugins={state.plugins}
                   meta={typedMeta}
                   fixtureOverrides={state.fixtureOverrides}
                   wrapperPropsMap={state.wrapperPropsMap}
@@ -61,7 +63,8 @@ export function HomepageShowcase({ componentName }: HomepageShowcaseProps) {
                   component={state.selectedComponent}
                   propValues={state.propValues}
                   childrenItems={state.childrenItems}
-                  fixtures={state.resolvedFixtures}
+                  resolvedItems={state.resolvedItems}
+                  plugins={state.plugins}
                   meta={typedMeta}
                   fixtureOverrides={state.fixtureOverrides}
                   onPropChange={state.setPropValue}

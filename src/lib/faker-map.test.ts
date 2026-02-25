@@ -6,7 +6,6 @@ import {
   generateFakeValue,
   generateVariedInstances,
   getArrayItemType,
-  parseStructuredFields,
   resolveControlType,
 } from './faker-map.js'
 
@@ -70,8 +69,12 @@ describe('resolveControlType', () => {
   })
 
   it('returns array for structured object array types', () => {
-    expect(resolveControlType(makeProp({ type: '{ label: string; icon: ReactNode; href: string }[]' }))).toBe('array')
-    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe('array')
+    expect(
+      resolveControlType(makeProp({ type: '{ label: string; icon: ReactNode; href: string }[]' })),
+    ).toBe('array')
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe(
+      'array',
+    )
   })
 
   it('returns json for Record types', () => {
@@ -90,9 +93,13 @@ describe('resolveControlType', () => {
 
   it('does not return component for structured types containing ReactNode', () => {
     // An object array whose fields happen to include ReactNode should be array, not component
-    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe('array')
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }[]' }))).toBe(
+      'array',
+    )
     // An object containing ReactNode should be json, not component
-    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }' }))).toBe('json')
+    expect(resolveControlType(makeProp({ type: '{ label: string; content: ReactNode }' }))).toBe(
+      'json',
+    )
   })
 })
 
@@ -343,70 +350,111 @@ describe('generateFakeValue', () => {
   })
 })
 
-// ── parseStructuredFields ─────────────────────────────────────
+// ── Props with pre-extracted structuredFields ─────────────────
 
-describe('parseStructuredFields', () => {
-  it('returns null for non-object strings', () => {
-    expect(parseStructuredFields('string')).toBeNull()
-    expect(parseStructuredFields('number[]')).toBeNull()
+describe('resolveControlType — props with structuredFields', () => {
+  it('returns object for object type with structuredFields', () => {
+    expect(
+      resolveControlType(
+        makeProp({
+          type: '{ email: string; phone?: string }',
+          structuredFields: [
+            { name: 'email', type: 'string', optional: false, isComponent: false },
+            { name: 'phone', type: 'string', optional: true, isComponent: false },
+          ],
+        }),
+      ),
+    ).toBe('object')
   })
 
-  it('returns null for empty braces', () => {
-    expect(parseStructuredFields('{}')).toBeNull()
-    expect(parseStructuredFields('{  }')).toBeNull()
+  it('returns array for array type with structuredFields', () => {
+    expect(
+      resolveControlType(
+        makeProp({
+          type: '{ platform: string; url: string }[]',
+          structuredFields: [
+            { name: 'platform', type: 'string', optional: false, isComponent: false },
+            { name: 'url', type: 'string', optional: false, isComponent: false },
+          ],
+        }),
+      ),
+    ).toBe('array')
   })
 
-  it('parses simple string fields', () => {
-    const result = parseStructuredFields('{ label: string; value: string }')
-    expect(result).toEqual([
-      { name: 'label', type: 'string', optional: false, isComponent: false },
-      { name: 'value', type: 'string', optional: false, isComponent: false },
-    ])
+  it('returns json for inline object type string (type-string fallback)', () => {
+    expect(
+      resolveControlType(
+        makeProp({
+          type: '{ label: string; value: number }',
+        }),
+      ),
+    ).toBe('json')
   })
 
-  it('parses mixed types (string, number, boolean)', () => {
-    const result = parseStructuredFields('{ name: string; count: number; active: boolean }')
-    expect(result).toHaveLength(3)
-    expect(result![0]).toMatchObject({ name: 'name', type: 'string' })
-    expect(result![1]).toMatchObject({ name: 'count', type: 'number' })
-    expect(result![2]).toMatchObject({ name: 'active', type: 'boolean' })
-  })
-
-  it('detects optional fields', () => {
-    const result = parseStructuredFields('{ label: string; icon?: LucideIcon }')
-    expect(result![0].optional).toBe(false)
-    expect(result![1].optional).toBe(true)
-  })
-
-  it('detects ReactNode as component (node kind)', () => {
-    const result = parseStructuredFields('{ content: ReactNode }')
-    expect(result![0].isComponent).toBe(true)
-    expect(result![0].componentKind).toBe('node')
-  })
-
-  it('detects LucideIcon as component (icon kind)', () => {
-    const result = parseStructuredFields('{ icon: LucideIcon }')
-    expect(result![0].isComponent).toBe(true)
-    expect(result![0].componentKind).toBe('icon')
-  })
-
-  it('handles trailing semicolons', () => {
-    const result = parseStructuredFields('{ label: string; }')
-    expect(result).toHaveLength(1)
-    expect(result![0].name).toBe('label')
-  })
-
-  it('returns null for malformed fields', () => {
-    expect(parseStructuredFields('{ not valid }')).toBeNull()
-    expect(parseStructuredFields('{ : string }')).toBeNull()
+  it('returns array for inline object array type string (type-string fallback)', () => {
+    expect(
+      resolveControlType(
+        makeProp({
+          type: '{ label: string; value: number }[]',
+        }),
+      ),
+    ).toBe('array')
   })
 })
 
-// ── getArrayItemType with structured fields ──────────────────
+describe('getArrayItemType — pre-extracted structuredFields', () => {
+  it('passes through structuredFields from prop metadata', () => {
+    const result = getArrayItemType(
+      makeProp({
+        type: '{ platform: string; url: string; label?: string }[]',
+        structuredFields: [
+          {
+            name: 'platform',
+            type: 'string',
+            optional: false,
+            isComponent: false,
+            values: ['twitter', 'github'],
+          },
+          { name: 'url', type: 'string', optional: false, isComponent: false },
+          { name: 'label', type: 'string', optional: true, isComponent: false },
+        ],
+      }),
+    )
+    expect(result).not.toBeNull()
+    expect(result!.isComponent).toBe(false)
+    expect(result!.structuredFields).toHaveLength(3)
+    expect(result!.structuredFields![0].values).toEqual(['twitter', 'github'])
+    expect(result!.structuredFields![2]).toMatchObject({ name: 'label', optional: true })
+  })
+
+  it('returns undefined structuredFields when not provided on prop', () => {
+    const result = getArrayItemType(
+      makeProp({
+        type: '{ label: string; value: number }[]',
+      }),
+    )
+    expect(result).not.toBeNull()
+    expect(result!.structuredFields).toBeUndefined()
+  })
+})
+
+// ── getArrayItemType with pre-extracted structured fields ────
 
 describe('getArrayItemType — structured', () => {
-  it('returns structuredFields for object array types', () => {
-    const result = getArrayItemType(makeProp({ type: '{ label: string; icon: LucideIcon }[]' }))
+  it('returns structuredFields when provided on prop', () => {
+    const fields = [
+      { name: 'label', type: 'string', optional: false, isComponent: false },
+      {
+        name: 'icon',
+        type: 'LucideIcon',
+        optional: false,
+        isComponent: true,
+        componentKind: 'icon' as const,
+      },
+    ]
+    const result = getArrayItemType(
+      makeProp({ type: '{ label: string; icon: LucideIcon }[]', structuredFields: fields }),
+    )
     expect(result).not.toBeNull()
     expect(result!.isComponent).toBe(false)
     expect(result!.structuredFields).toHaveLength(2)
@@ -426,7 +474,14 @@ describe('generateFakeValue — structured arrays', () => {
   it('generates 2 items for required structured array', () => {
     const result = generateFakeValue(
       'tabs',
-      makeProp({ type: '{ label: string; value: number }[]', required: true }),
+      makeProp({
+        type: '{ label: string; value: number }[]',
+        required: true,
+        structuredFields: [
+          { name: 'label', type: 'string', optional: false, isComponent: false },
+          { name: 'value', type: 'number', optional: false, isComponent: false },
+        ],
+      }),
     )
     expect(Array.isArray(result)).toBe(true)
     const arr = result as Record<string, unknown>[]
@@ -438,7 +493,11 @@ describe('generateFakeValue — structured arrays', () => {
   it('generates empty array for optional structured array', () => {
     const result = generateFakeValue(
       'tabs',
-      makeProp({ type: '{ label: string }[]', required: false }),
+      makeProp({
+        type: '{ label: string }[]',
+        required: false,
+        structuredFields: [{ name: 'label', type: 'string', optional: false, isComponent: false }],
+      }),
     )
     expect(result).toEqual([])
   })
@@ -446,11 +505,86 @@ describe('generateFakeValue — structured arrays', () => {
   it('sets component fields to undefined', () => {
     const result = generateFakeValue(
       'tabs',
-      makeProp({ type: '{ label: string; icon: LucideIcon }[]', required: true }),
+      makeProp({
+        type: '{ label: string; icon: LucideIcon }[]',
+        required: true,
+        structuredFields: [
+          { name: 'label', type: 'string', optional: false, isComponent: false },
+          {
+            name: 'icon',
+            type: 'LucideIcon',
+            optional: false,
+            isComponent: true,
+            componentKind: 'icon',
+          },
+        ],
+      }),
     )
     const arr = result as Record<string, unknown>[]
     expect(arr[0].icon).toBeUndefined()
     expect(typeof arr[0].label).toBe('string')
+  })
+})
+
+// ── generateFakeValue with structured objects (non-array) ─────
+
+describe('generateFakeValue — structured objects', () => {
+  it('generates object with required fields for required structured prop', () => {
+    const result = generateFakeValue(
+      'contact',
+      makeProp({
+        type: '{ email: string; phone?: string }',
+        required: true,
+        structuredFields: [
+          { name: 'email', type: 'string', optional: false, isComponent: false },
+          { name: 'phone', type: 'string', optional: true, isComponent: false },
+        ],
+      }),
+    )
+    expect(result).toBeDefined()
+    expect(typeof result).toBe('object')
+    const obj = result as Record<string, unknown>
+    expect(typeof obj.email).toBe('string')
+    // Optional fields also get faker defaults so the editor can show them
+    expect(typeof obj.phone).toBe('string')
+  })
+
+  it('returns undefined for optional structured prop', () => {
+    const result = generateFakeValue(
+      'contact',
+      makeProp({
+        type: '{ email: string; phone?: string }',
+        required: false,
+        structuredFields: [
+          { name: 'email', type: 'string', optional: false, isComponent: false },
+          { name: 'phone', type: 'string', optional: true, isComponent: false },
+        ],
+      }),
+    )
+    expect(result).toBeUndefined()
+  })
+
+  it('sets component fields to undefined in structured objects', () => {
+    const result = generateFakeValue(
+      'header',
+      makeProp({
+        type: '{ title: string; icon: LucideIcon }',
+        required: true,
+        structuredFields: [
+          { name: 'title', type: 'string', optional: false, isComponent: false },
+          {
+            name: 'icon',
+            type: 'LucideIcon',
+            optional: false,
+            isComponent: true,
+            componentKind: 'icon',
+          },
+        ],
+      }),
+    )
+    const obj = result as Record<string, unknown>
+    expect(typeof obj.title).toBe('string')
+    expect(obj.icon).toBeUndefined()
   })
 })
 
@@ -531,6 +665,7 @@ describe('generateVariedInstances', () => {
     const result = generateVariedInstances(
       comp,
       [],
+      [],
       { label: 'Hello', disabled: false },
       'Click',
       1,
@@ -544,6 +679,7 @@ describe('generateVariedInstances', () => {
     const comp = makeComp()
     const result = generateVariedInstances(
       comp,
+      [],
       [],
       { label: 'Hello', disabled: false },
       'Click',
@@ -559,7 +695,7 @@ describe('generateVariedInstances', () => {
 
   it('preserves non-string user values across instances', () => {
     const comp = makeComp()
-    const result = generateVariedInstances(comp, [], { label: 'Hello', disabled: true }, 'Click', 3)
+    const result = generateVariedInstances(comp, [], [], { label: 'Hello', disabled: true }, 'Click', 3)
     // Boolean should be preserved in varied instances
     expect(result[1].propValues.disabled).toBe(true)
     expect(result[2].propValues.disabled).toBe(true)
@@ -569,6 +705,7 @@ describe('generateVariedInstances', () => {
     const comp = makeComp()
     const result = generateVariedInstances(
       comp,
+      [],
       [],
       { label: 'Hello', variant: 'secondary' },
       'Click',
@@ -583,7 +720,7 @@ describe('generateVariedInstances', () => {
     faker.seed(12345)
     const _before = faker.lorem.word()
     faker.seed(12345)
-    generateVariedInstances(comp, [], { label: 'Hello' }, 'Click', 5)
+    generateVariedInstances(comp, [], [], { label: 'Hello' }, 'Click', 5)
     // After generateVariedInstances, seed should be restored (unseeded)
     // Just verify it doesn't throw and produces output
     const after = faker.lorem.word()

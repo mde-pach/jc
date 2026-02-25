@@ -7,21 +7,21 @@
  */
 
 import { useState } from 'react'
-import type { JcResolvedFixture } from '../../types.js'
+import type { JcResolvedPluginItem } from '../../types.js'
 import { FixturePicker } from './fixture-picker.js'
 import { inputStyle } from './styles.js'
 
 export function NodeFieldInput({
   value,
-  fixtures,
+  resolvedItems,
   onChange,
 }: {
   value: unknown
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
   onChange: (value: unknown) => void
 }) {
-  const hasFixtures = fixtures.length > 0
-  const isFixtureKey = typeof value === 'string' && fixtures.some((f) => f.qualifiedKey === value)
+  const hasFixtures = resolvedItems.length > 0
+  const isFixtureKey = typeof value === 'string' && resolvedItems.some((f) => f.qualifiedKey === value)
   const [mode, setMode] = useState<'text' | 'fixture'>('text')
 
   return (
@@ -82,7 +82,7 @@ export function NodeFieldInput({
       ) : (
         <FixturePicker
           value={typeof value === 'string' ? value : null}
-          fixtures={fixtures}
+          resolvedItems={resolvedItems}
           onChange={(key) => onChange(key ?? undefined)}
         />
       )}

@@ -11,9 +11,9 @@
 
 import { useState } from 'react'
 import { resolveControlType } from '../../lib/faker-map.js'
-import { getFixturesForKind } from '../../lib/fixtures.js'
+import { getItemsForProp } from '../../lib/plugins.js'
 import type { FixtureOverride } from '../../lib/use-showcase-state.js'
-import type { JcMeta, JcResolvedFixture } from '../../types.js'
+import type { JcMeta, JcPlugin, JcResolvedPluginItem } from '../../types.js'
 import { ShowcaseField } from './showcase-field.js'
 import { inputStyle } from './styles.js'
 
@@ -21,7 +21,8 @@ export function ComponentFixtureEditor({
   slotKey,
   qualifiedKey,
   meta,
-  fixtures,
+  resolvedItems,
+  plugins,
   fixtureOverrides,
   onFixturePropChange,
   onFixtureChildrenChange,
@@ -29,7 +30,8 @@ export function ComponentFixtureEditor({
   slotKey: string
   qualifiedKey: string
   meta: JcMeta
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   fixtureOverrides: Record<string, FixtureOverride>
   onFixturePropChange: (slotKey: string, propName: string, value: unknown) => void
   onFixtureChildrenChange: (slotKey: string, text: string) => void
@@ -115,11 +117,9 @@ export function ComponentFixtureEditor({
           {editableProps.map((prop) => {
             const ct = resolveControlType(prop)
             const kindFixtures =
-              ct === 'component'
-                ? getFixturesForKind(fixtures, prop.componentKind)
-                : ct === 'array'
-                  ? fixtures
-                  : undefined
+              ct === 'component' || ct === 'array'
+                ? getItemsForProp(prop, plugins, resolvedItems)
+                : undefined
             return (
               <ShowcaseField
                 key={prop.name}
@@ -129,7 +129,7 @@ export function ComponentFixtureEditor({
                 value={override.props[prop.name]}
                 options={prop.values}
                 componentKind={prop.componentKind}
-                fixtures={kindFixtures}
+                resolvedItems={kindFixtures}
                 propMeta={prop}
                 meta={meta}
                 fixtureOverrides={fixtureOverrides}

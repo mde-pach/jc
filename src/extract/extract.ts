@@ -8,6 +8,8 @@ import { basename, join, relative, resolve } from 'node:path'
 import { withCompilerOptions } from 'react-docgen-typescript'
 import ts from 'typescript'
 import type {
+  ExtractionResult,
+  ExtractionWarning,
   JcComponentMeta,
   JcComponentPropKind,
   JcConfig,
@@ -19,15 +21,10 @@ import { createAstAnalyzer, getCompilerOptions } from './ast-analyze.js'
 import { detectWrapperFromExamples, parseExamplePreset } from './example-parser.js'
 import { analyzeComponentUsage } from './usage-analysis.js'
 
-/** Apply path alias mapping: replace source prefixes with alias prefixes */
-export function applyPathAlias(filePath: string, pathAlias: Record<string, string>): string {
-  for (const [alias, sourcePrefix] of Object.entries(pathAlias)) {
-    if (filePath.startsWith(sourcePrefix)) {
-      return alias + filePath.slice(sourcePrefix.length)
-    }
-  }
-  return filePath
-}
+// Re-export applyPathAlias from shared utils for backward compat
+export { applyPathAlias } from '../lib/utils.js'
+
+import { applyPathAlias } from '../lib/utils.js'
 
 /**
  * Cross-version glob: Node 22+ has globSync in node:fs,
@@ -318,12 +315,14 @@ function discoverFiles(projectRoot: string, config: JcConfig): string[] {
 
 // ── Main extraction ───────────────────────────────────────────
 
-export function extract(projectRoot: string, config: JcConfig): JcMeta {
+export function extract(projectRoot: string, config: JcConfig): ExtractionResult {
   const files = discoverFiles(projectRoot, config)
   const parser = createParser(projectRoot, config)
   const shouldKeepProp = createPropFilter(config)
   const excludeNames = new Set(config.excludeComponents ?? [])
   const components: JcComponentMeta[] = []
+  const warnings: ExtractionWarning[] = []
+  let filesSkipped = 0
 
   console.log(`[jc] Found ${files.length} component files`)
 
@@ -339,7 +338,14 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
       const parsed = parser.parseWithProgramProvider(file, () => program)
 
       for (const doc of parsed) {
-        if (excludeNames.has(doc.displayName)) continue
+        if (excludeNames.has(doc.displayName)) {
+          warnings.push({
+            type: 'COMPONENT_SKIPPED',
+            component: doc.displayName,
+            reason: 'excluded by config',
+          })
+          continue
+        }
 
         // AST analysis for this component (may return undefined)
         const astResult = astAnalyzer.analyzeComponent(file, doc.displayName)
@@ -365,12 +371,26 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
           const astProp = astResult?.props[propName]
 
           // AST values → regex fallback
-          const values = astProp?.values ?? cleanValues(rawValues)
+          // If AST expanded the type into an object literal, it's not an enum — clear values
+          const isExpandedObject =
+            astProp?.simplifiedType?.startsWith('{') ||
+            (astProp?.simplifiedType?.endsWith('[]') && astProp.simplifiedType.startsWith('{'))
+          const values = isExpandedObject ? undefined : (astProp?.values ?? cleanValues(rawValues))
           // AST boolean → regex fallback
           const boolEnum = astProp?.isBoolean ?? isBooleanEnum(rawType, rawValues)
           // AST componentKind → regex fallback
           const componentKind =
             astProp?.componentKind ?? detectComponentKind(propName, rawType, source)
+
+          // Track when falling back to regex for prop analysis
+          if (!astProp && (componentKind || values)) {
+            warnings.push({
+              type: 'PROP_FALLBACK',
+              component: doc.displayName,
+              prop: propName,
+              from: 'regex',
+            })
+          }
 
           props[propName] = {
             name: propName,
@@ -382,8 +402,12 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
             description: propInfo.description ?? '',
             isChildren: false,
             componentKind,
+            ...(astProp?.structuredFields ? { structuredFields: astProp.structuredFields } : {}),
           }
         }
+
+        // Determine export type from AST analysis
+        const exportType = astResult?.isDefaultExport ? ('default' as const) : ('named' as const)
 
         components.push({
           displayName: doc.displayName,
@@ -391,11 +415,16 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
           description: doc.description ?? '',
           props,
           acceptsChildren,
+          ...(astResult?.childrenType ? { childrenType: astResult.childrenType } : {}),
+          exportType,
           ...(astResult?.tags ? { tags: astResult.tags } : {}),
         })
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      warnings.push({ type: 'FILE_PARSE_ERROR', file: basename(file), error: errorMsg })
       console.warn(`[jc] Failed to parse ${basename(file)}: ${err}`)
+      filesSkipped++
     }
   }
 
@@ -456,11 +485,33 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
     `[jc] Extracted ${finalComponents.length} components (${components.length} before dedup)`,
   )
 
-  return {
+  if (warnings.length > 0) {
+    const errors = warnings.filter((w) => w.type === 'FILE_PARSE_ERROR')
+    const fallbacks = warnings.filter((w) => w.type === 'PROP_FALLBACK')
+    if (errors.length > 0) {
+      console.warn(`[jc] ${errors.length} file(s) failed to parse`)
+    }
+    if (fallbacks.length > 0) {
+      console.log(`[jc] ${fallbacks.length} prop(s) used regex fallback`)
+    }
+  }
+
+  const meta: JcMeta = {
     generatedAt: new Date().toISOString(),
     componentDir: config.componentGlob,
     components: finalComponents,
     pathAlias: config.pathAlias ?? { '@/': 'src/' },
+  }
+
+  return {
+    meta,
+    warnings,
+    stats: {
+      filesScanned: files.length,
+      filesSkipped,
+      componentsBefore: components.length,
+      componentsAfter: finalComponents.length,
+    },
   }
 }
 
@@ -469,13 +520,17 @@ export function extract(projectRoot: string, config: JcConfig): JcMeta {
 export function generateRegistry(meta: JcMeta, config: JcConfig): string {
   const pathAlias = config.pathAlias ?? { '@/': 'src/' }
   const seen = new Set<string>()
-  const entries: Array<{ name: string; importPath: string }> = []
+  const entries: Array<{ name: string; importPath: string; isDefault: boolean }> = []
 
   for (const comp of meta.components) {
     if (seen.has(comp.displayName)) continue
     seen.add(comp.displayName)
     const importPath = applyPathAlias(comp.filePath, pathAlias).replace(/\.tsx$/, '')
-    entries.push({ name: comp.displayName, importPath })
+    entries.push({
+      name: comp.displayName,
+      importPath,
+      isDefault: comp.exportType === 'default',
+    })
   }
 
   const lines: string[] = [
@@ -487,8 +542,15 @@ export function generateRegistry(meta: JcMeta, config: JcConfig): string {
     'export const registry: Record<string, () => Promise<ComponentType<any>>> = {',
   ]
 
-  for (const { name, importPath } of entries) {
-    lines.push(`  '${name}': () => import('${importPath}').then(m => (m as any).${name}),`)
+  for (const { name, importPath, isDefault } of entries) {
+    if (isDefault) {
+      // Default exports: try .default first, fall back to named export
+      lines.push(
+        `  '${name}': () => import('${importPath}').then(m => (m as any).default ?? (m as any).${name}),`,
+      )
+    } else {
+      lines.push(`  '${name}': () => import('${importPath}').then(m => (m as any).${name}),`)
+    }
   }
 
   lines.push('}', '')

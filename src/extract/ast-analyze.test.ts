@@ -159,6 +159,159 @@ describe('full integration', () => {
   })
 })
 
+// ── Named interface type expansion ───────────────────────────
+
+describe('named interface type expansion', () => {
+  it('expands ContactInfo into inline object literal', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result).toBeDefined()
+    expect(result!.props.contact?.simplifiedType).toBeDefined()
+    expect(result!.props.contact!.simplifiedType).toMatch(/^\{/)
+    expect(result!.props.contact!.simplifiedType).toMatch(/email/)
+    expect(result!.props.contact!.simplifiedType).toMatch(/string/)
+  })
+
+  it('expands NotificationPrefs into inline object literal with boolean and enum fields', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.notifications?.simplifiedType).toBeDefined()
+    expect(result!.props.notifications!.simplifiedType).toMatch(/^\{/)
+    expect(result!.props.notifications!.simplifiedType).toMatch(/email/)
+    expect(result!.props.notifications!.simplifiedType).toMatch(/boolean/)
+    expect(result!.props.notifications!.simplifiedType).toMatch(/frequency/)
+  })
+
+  it('expands SocialLink[] into inline object array', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.socialLinks?.simplifiedType).toBeDefined()
+    expect(result!.props.socialLinks!.simplifiedType).toMatch(/\[\]$/)
+    expect(result!.props.socialLinks!.simplifiedType).toMatch(/platform/)
+    expect(result!.props.socialLinks!.simplifiedType).toMatch(/url/)
+  })
+
+  it('expands Metric[] into inline object array', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.metrics?.simplifiedType).toBeDefined()
+    expect(result!.props.metrics!.simplifiedType).toMatch(/\[\]$/)
+    expect(result!.props.metrics!.simplifiedType).toMatch(/label/)
+    expect(result!.props.metrics!.simplifiedType).toMatch(/value/)
+    expect(result!.props.metrics!.simplifiedType).toMatch(/number/)
+  })
+
+  it('does not expand Record<string, string>', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.metadata?.simplifiedType).toMatch(/Record/)
+  })
+
+  it('does not misclassify named interface as component kind', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.contact?.componentKind).toBeUndefined()
+    expect(result!.props.notifications?.componentKind).toBeUndefined()
+    expect(result!.props.socialLinks?.componentKind).toBeUndefined()
+    expect(result!.props.metrics?.componentKind).toBeUndefined()
+  })
+
+  it('still detects ReactNode as node kind for badge/footer', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.badge?.componentKind).toBe('node')
+    expect(result!.props.footer?.componentKind).toBe('node')
+  })
+
+  it('preserves simple types alongside expanded ones', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.name?.simplifiedType).toBe('string')
+    expect(result!.props.online?.isBoolean).toBe(true)
+    expect(result!.props.role?.values).toEqual(['admin', 'member', 'owner', 'guest'])
+  })
+
+  it('expands nested Address inside ContactInfo', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const contactType = result!.props.contact!.simplifiedType!
+    // Address should be expanded too (recursive expansion)
+    expect(contactType).toMatch(/street/)
+    expect(contactType).toMatch(/city/)
+  })
+})
+
+// ── structuredFields extraction ──────────────────────────────
+
+describe('structuredFields extraction', () => {
+  it('extracts structuredFields for contact (named interface)', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const sf = result!.props.contact?.structuredFields
+    expect(sf).toBeDefined()
+    expect(sf!.length).toBe(3) // email, phone, address
+    expect(sf!.find((f) => f.name === 'email')).toMatchObject({
+      type: 'string',
+      optional: false,
+      isComponent: false,
+    })
+    expect(sf!.find((f) => f.name === 'phone')).toMatchObject({
+      type: 'string',
+      optional: true,
+      isComponent: false,
+    })
+  })
+
+  it('extracts nested fields for address inside contact', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const sf = result!.props.contact?.structuredFields
+    const addressField = sf!.find((f) => f.name === 'address')
+    expect(addressField).toBeDefined()
+    expect(addressField!.fields).toBeDefined()
+    expect(addressField!.fields!.length).toBe(4)
+    expect(addressField!.fields!.map((f) => f.name)).toEqual([
+      'street',
+      'city',
+      'zipCode',
+      'country',
+    ])
+  })
+
+  it('extracts structuredFields for notifications with enum values', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const sf = result!.props.notifications?.structuredFields
+    expect(sf).toBeDefined()
+    expect(sf!.length).toBe(4) // email, push, sms, frequency
+    const freq = sf!.find((f) => f.name === 'frequency')
+    expect(freq).toBeDefined()
+    expect(freq!.values).toEqual(['instant', 'daily', 'weekly'])
+  })
+
+  it('extracts structuredFields for socialLinks array with enum values', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const sf = result!.props.socialLinks?.structuredFields
+    expect(sf).toBeDefined()
+    expect(sf!.length).toBe(3) // platform, url, label
+    const platform = sf!.find((f) => f.name === 'platform')
+    expect(platform!.values).toEqual(['twitter', 'github', 'linkedin', 'website'])
+  })
+
+  it('extracts structuredFields for metrics array with optional enum', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    const sf = result!.props.metrics?.structuredFields
+    expect(sf).toBeDefined()
+    expect(sf!.length).toBe(4) // label, value, unit, trend
+    const trend = sf!.find((f) => f.name === 'trend')
+    expect(trend!.optional).toBe(true)
+    expect(trend!.values).toEqual(['up', 'down', 'flat'])
+    const value = sf!.find((f) => f.name === 'value')
+    expect(value!.type).toBe('number')
+  })
+
+  it('does not extract structuredFields for primitive props', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.name?.structuredFields).toBeUndefined()
+    expect(result!.props.online?.structuredFields).toBeUndefined()
+    expect(result!.props.role?.structuredFields).toBeUndefined()
+  })
+
+  it('does not extract structuredFields for ReactNode props', () => {
+    const result = analyzeFixture('named-interfaces.tsx', 'ProfileCard')
+    expect(result!.props.badge?.structuredFields).toBeUndefined()
+    expect(result!.props.footer?.structuredFields).toBeUndefined()
+  })
+})
+
 // ── getCompilerOptions ───────────────────────────────────────
 
 describe('getCompilerOptions', () => {

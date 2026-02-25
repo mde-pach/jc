@@ -17,14 +17,15 @@ import { generateVariedInstances } from '../lib/faker-map.js'
 import { useResolvedComponent } from '../lib/use-resolved-component.jsx'
 import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import type { JcTheme } from '../lib/use-theme.js'
-import type { ChildItem, JcComponentMeta, JcMeta, JcResolvedFixture } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
 import { ErrorBoundary } from './error-boundary.js'
 
 interface ShowcasePreviewProps {
   component: JcComponentMeta
   propValues: Record<string, unknown>
   childrenItems: ChildItem[]
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
   wrapperPropsMap: Record<string, Record<string, unknown>>
@@ -42,7 +43,8 @@ export function ShowcasePreview({
   component,
   propValues,
   childrenItems,
-  fixtures,
+  resolvedItems,
+  plugins,
   meta,
   fixtureOverrides,
   wrapperPropsMap,
@@ -69,7 +71,8 @@ export function ShowcasePreview({
     component,
     propValues,
     childrenItems,
-    fixtures,
+    resolvedItems,
+    plugins,
     meta,
     fixtureOverrides,
     wrapperPropsMap,
@@ -82,8 +85,8 @@ export function ShowcasePreview({
     childrenItems.length > 0 && childrenItems[0].type === 'text' ? childrenItems[0].value : ''
   const variedInstances = useMemo(() => {
     if (presetMode !== 'generated' || instanceCount <= 1) return null
-    return generateVariedInstances(component, fixtures, propValues, firstChildText, instanceCount)
-  }, [presetMode, instanceCount, component, fixtures, propValues, firstChildText])
+    return generateVariedInstances(component, plugins, resolvedItems, propValues, firstChildText, instanceCount)
+  }, [presetMode, instanceCount, component, plugins, resolvedItems, propValues, firstChildText])
 
   // Generate highlighted JSX tokens
   const colors = theme === 'light' ? C_LIGHT : C_DARK
@@ -93,7 +96,7 @@ export function ShowcasePreview({
         component,
         propValues,
         childrenItems,
-        fixtures,
+        resolvedItems,
         colors,
         fixtureOverrides,
         meta,
@@ -103,7 +106,7 @@ export function ShowcasePreview({
       component,
       propValues,
       childrenItems,
-      fixtures,
+      resolvedItems,
       colors,
       fixtureOverrides,
       meta,
@@ -117,12 +120,12 @@ export function ShowcasePreview({
         component,
         propValues,
         childrenItems,
-        fixtures,
+        resolvedItems,
         fixtureOverrides,
         meta,
         colors,
       ),
-    [component, propValues, childrenItems, fixtures, fixtureOverrides, meta, colors],
+    [component, propValues, childrenItems, resolvedItems, fixtureOverrides, meta, colors],
   )
 
   const codeTokens = useMemo(() => {

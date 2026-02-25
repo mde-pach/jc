@@ -28,7 +28,7 @@ import { createElement } from 'react'
 function icon(Comp: typeof Star, size = 20) {
   return {
     render: () => createElement(Comp, { size }),
-    renderIcon: () => createElement(Comp, { size: 14 }),
+    renderPreview: () => createElement(Comp, { size: 14 }),
     component: Comp,
   }
 }
@@ -54,7 +54,7 @@ export const lucideFixtures = defineFixtures({
             ['label', 'string', 'Display name shown in the picker UI'],
             ['category', 'string', 'Group label — determines which prop kinds use this fixture'],
             ['render', '() => ReactNode', 'Full-size preview rendered in the picker grid'],
-            ['renderIcon', '() => ReactNode', 'Compact preview for the selected-value thumbnail'],
+            ['renderPreview', '() => ReactNode', 'Compact preview for the selected-value thumbnail'],
             ['component', 'ComponentType', 'The actual value passed as the prop at runtime'],
           ]}
           monoFirstCol

@@ -11,14 +11,15 @@
 
 import { useState } from 'react'
 import { resolveControlType } from '../lib/faker-map.js'
-import { getFixturesForKind } from '../lib/fixtures.js'
+import { getItemsForProp, getPluginForProp } from '../lib/plugins.js'
 import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import type {
   ChildItem,
   JcComponentMeta,
   JcExamplePreset,
   JcMeta,
-  JcResolvedFixture,
+  JcPlugin,
+  JcResolvedPluginItem,
 } from '../types.js'
 import { ComponentFixtureEditor, FixturePicker, ShowcaseField } from './field/index.js'
 import { inputStyle } from './field/styles.js'
@@ -27,7 +28,8 @@ interface ShowcaseControlsProps {
   component: JcComponentMeta
   propValues: Record<string, unknown>
   childrenItems: ChildItem[]
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
   onPropChange: (propName: string, value: unknown) => void
@@ -49,7 +51,8 @@ export function ShowcaseControls({
   component,
   propValues,
   childrenItems,
-  fixtures,
+  resolvedItems,
+  plugins,
   meta,
   fixtureOverrides,
   onPropChange,
@@ -67,7 +70,7 @@ export function ShowcaseControls({
   onReset,
 }: ShowcaseControlsProps) {
   const propEntries = Object.values(component.props)
-  const hasFixtures = fixtures.length > 0
+  const hasFixtures = resolvedItems.length > 0
   const hasWrappers = wrapperMetas.length > 0
 
   // Active tab: component name or a wrapper name
@@ -208,7 +211,8 @@ export function ShowcaseControls({
             {component.acceptsChildren && (
               <ChildrenEditor
                 items={childrenItems}
-                fixtures={fixtures}
+                resolvedItems={resolvedItems}
+                plugins={plugins}
                 meta={meta}
                 fixtureOverrides={fixtureOverrides}
                 hasFixtures={hasFixtures}
@@ -223,11 +227,12 @@ export function ShowcaseControls({
             {propEntries.length > 0
               ? propEntries.map((prop) => {
                   const controlType = resolveControlType(prop)
-                  const kindFixtures =
+                  const matchingPlugin = controlType === 'component' ? getPluginForProp(prop, plugins) : null
+                  const propItems =
                     controlType === 'component'
-                      ? getFixturesForKind(fixtures, prop.componentKind)
+                      ? getItemsForProp(prop, plugins, resolvedItems)
                       : controlType === 'array'
-                        ? fixtures
+                        ? resolvedItems
                         : undefined
                   return (
                     <ShowcaseField
@@ -238,10 +243,12 @@ export function ShowcaseControls({
                       value={propValues[prop.name]}
                       options={prop.values}
                       componentKind={prop.componentKind}
-                      fixtures={kindFixtures}
+                      resolvedItems={propItems}
                       propMeta={prop}
+                      plugins={plugins}
                       meta={meta}
                       fixtureOverrides={fixtureOverrides}
+                      Picker={matchingPlugin?.Picker}
                       onFixturePropChange={onFixturePropChange}
                       onFixtureChildrenChange={onFixtureChildrenChange}
                       onChange={(v) => onPropChange(prop.name, v)}
@@ -266,11 +273,12 @@ export function ShowcaseControls({
           Object.values(activeWrapperMeta.props).length > 0 ? (
             Object.values(activeWrapperMeta.props).map((prop) => {
               const controlType = resolveControlType(prop)
-              const kindFixtures =
+              const matchingPlugin = controlType === 'component' ? getPluginForProp(prop, plugins) : null
+              const propItems =
                 controlType === 'component'
-                  ? getFixturesForKind(fixtures, prop.componentKind)
+                  ? getItemsForProp(prop, plugins, resolvedItems)
                   : controlType === 'array'
-                    ? fixtures
+                    ? resolvedItems
                     : undefined
               return (
                 <ShowcaseField
@@ -281,10 +289,12 @@ export function ShowcaseControls({
                   value={wrapperPropsMap[activeTab]?.[prop.name]}
                   options={prop.values}
                   componentKind={prop.componentKind}
-                  fixtures={kindFixtures}
+                  resolvedItems={propItems}
                   propMeta={prop}
+                  plugins={plugins}
                   meta={meta}
                   fixtureOverrides={fixtureOverrides}
+                  Picker={matchingPlugin?.Picker}
                   onFixturePropChange={onFixturePropChange}
                   onFixtureChildrenChange={onFixtureChildrenChange}
                   onChange={(v) => onWrapperPropChange(activeTab, prop.name, v)}
@@ -314,7 +324,8 @@ export function ShowcaseControls({
 
 function ChildrenEditor({
   items,
-  fixtures,
+  resolvedItems,
+  plugins,
   meta,
   fixtureOverrides,
   hasFixtures,
@@ -325,7 +336,8 @@ function ChildrenEditor({
   onFixtureChildrenChange,
 }: {
   items: ChildItem[]
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
   hasFixtures: boolean
@@ -347,7 +359,8 @@ function ChildrenEditor({
           key={i}
           item={item}
           index={i}
-          fixtures={fixtures}
+          resolvedItems={resolvedItems}
+          plugins={plugins}
           meta={meta}
           fixtureOverrides={fixtureOverrides}
           hasFixtures={hasFixtures}
@@ -414,7 +427,8 @@ function ChildrenEditor({
 function ChildItemRow({
   item,
   index,
-  fixtures,
+  resolvedItems,
+  plugins,
   meta,
   fixtureOverrides,
   hasFixtures,
@@ -425,7 +439,8 @@ function ChildItemRow({
 }: {
   item: ChildItem
   index: number
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
+  plugins: JcPlugin[]
   meta: JcMeta
   fixtureOverrides: Record<string, FixtureOverride>
   hasFixtures: boolean
@@ -517,7 +532,7 @@ function ChildItemRow({
         <>
           <FixturePicker
             value={item.value || null}
-            fixtures={fixtures}
+            resolvedItems={resolvedItems}
             onChange={(key) => onUpdate({ type: 'fixture', value: key ?? '' })}
           />
           {item.value?.startsWith('components/') && (
@@ -525,7 +540,8 @@ function ChildItemRow({
               slotKey={`children:${index}`}
               qualifiedKey={item.value}
               meta={meta}
-              fixtures={fixtures}
+              resolvedItems={resolvedItems}
+              plugins={plugins}
               fixtureOverrides={fixtureOverrides}
               onFixturePropChange={onFixturePropChange}
               onFixtureChildrenChange={onFixtureChildrenChange}

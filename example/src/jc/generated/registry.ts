@@ -13,6 +13,7 @@ export const registry: Record<string, () => Promise<ComponentType<any>>> = {
   'Card': () => import('@/components/ui/data-display/card').then(m => (m as any).Card),
   'CodeBlock': () => import('@/components/ui/data-display/code-block').then(m => (m as any).CodeBlock),
   'DataTable': () => import('@/components/ui/data-display/data-table').then(m => (m as any).DataTable),
+  'ProfileCard': () => import('@/components/ui/data-display/profile-card').then(m => (m as any).ProfileCard),
   'StatCard': () => import('@/components/ui/data-display/stat-card').then(m => (m as any).StatCard),
   'Callout': () => import('@/components/ui/feedback/callout').then(m => (m as any).Callout),
   'Dialog': () => import('@/components/ui/feedback/dialog').then(m => (m as any).Dialog),

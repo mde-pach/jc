@@ -2,30 +2,31 @@
 
 /**
  * Component picker (fixture-aware).
- * For 'icon' kind: renders an icon picker grid.
- * For 'element'/'node' kind: renders a dropdown select.
- * Falls back to a plain text input when no fixtures are provided.
+ * If the matching plugin provides a `Picker` component, renders that.
+ * Otherwise falls back to a simple dropdown select.
+ * Plugin authors build their own pickers using jc's exported primitives
+ * (e.g. GridPicker) or their own custom UI.
  */
 
-import type { JcResolvedFixture } from '../../types.js'
-import { IconPickerButton } from './icon-picker.js'
+import type { JcResolvedPluginItem } from '../../types.js'
 import { inputStyle } from './styles.js'
 
 export function ComponentPicker({
   value,
-  kind,
-  fixtures,
+  resolvedItems,
   required,
   onChange,
+  Picker,
 }: {
   value: string
-  kind: 'icon' | 'element' | 'node'
-  fixtures: JcResolvedFixture[]
+  resolvedItems: JcResolvedPluginItem[]
   required: boolean
   onChange: (key: string) => void
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
 }) {
   // No fixtures available — text input fallback
-  if (fixtures.length === 0) {
+  if (resolvedItems.length === 0) {
     return (
       <input
         type="text"
@@ -37,17 +38,16 @@ export function ComponentPicker({
     )
   }
 
-  if (kind === 'icon') {
-    return (
-      <IconPickerButton value={value} fixtures={fixtures} required={required} onChange={onChange} />
-    )
+  // Plugin provides its own picker — delegate fully
+  if (Picker) {
+    return <Picker items={resolvedItems} value={value} required={required} onChange={onChange} />
   }
 
-  // Dropdown for element/node types
+  // Default fallback: simple dropdown for all kinds
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       <option value="">{required ? 'Select...' : '\u2014'}</option>
-      {fixtures.map((f) => (
+      {resolvedItems.map((f) => (
         <option key={f.qualifiedKey} value={f.qualifiedKey}>
           {f.label}
         </option>

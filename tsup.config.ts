@@ -22,6 +22,7 @@ export default defineConfig([
   {
     entry: {
       index: 'src/index.ts',
+      advanced: 'src/advanced.ts',
       config: 'src/config.ts',
       next: 'src/next.tsx',
     },
@@ -31,7 +32,7 @@ export default defineConfig([
     clean: true,
     treeshake: true,
     splitting: true,
-    onSuccess: addUseClientDirective(['next.js', 'index.js']),
+    onSuccess: addUseClientDirective(['next.js', 'index.js', 'advanced.js']),
   },
   // CLI binary (Node.js, no React) — bundles all deps into a single file
   {

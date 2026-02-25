@@ -1,5 +1,20 @@
 import type { ReactNode } from 'react'
 
+/** A single field inside a structured object/array-of-objects prop */
+export interface JcStructuredField {
+  name: string
+  type: string
+  optional: boolean
+  /** True when the field type is a component/icon (ReactNode, LucideIcon, etc.) */
+  isComponent: boolean
+  /** Component sub-kind: 'icon' if the type looks icon-like, 'node' for ReactNode/Element */
+  componentKind?: 'icon' | 'node'
+  /** Enum values when the field type is a string literal union */
+  values?: string[]
+  /** Nested structured fields when the field itself is an object type */
+  fields?: JcStructuredField[]
+}
+
 /** Metadata for a single component prop */
 export interface JcPropMeta {
   name: string
@@ -12,6 +27,13 @@ export interface JcPropMeta {
   isChildren: boolean
   /** Set when the prop accepts a React component/element/node */
   componentKind?: JcComponentPropKind
+  /**
+   * Structured field metadata for object and array-of-objects props.
+   * Extracted at CLI time from the TypeScript type checker — no runtime parsing needed.
+   * For array props (e.g. `Metric[]`), these are the fields of each array item.
+   * For object props (e.g. `ContactInfo`), these are the top-level fields.
+   */
+  structuredFields?: JcStructuredField[]
 }
 
 /** A parsed @example preset — prop values the user can toggle to */
@@ -26,6 +48,9 @@ export interface JcExamplePreset {
   wrapperProps: Record<string, Record<string, string>>
 }
 
+/** Type of children a component accepts (extracted from the TypeScript type system) */
+export type JcChildrenType = 'node' | 'string' | 'element' | 'function'
+
 /** Metadata for a single exported component */
 export interface JcComponentMeta {
   displayName: string
@@ -33,6 +58,10 @@ export interface JcComponentMeta {
   description: string
   props: Record<string, JcPropMeta>
   acceptsChildren: boolean
+  /** Specific type of children accepted (ReactNode, string, ReactElement, render prop) */
+  childrenType?: JcChildrenType
+  /** Whether the component is a default export or named export */
+  exportType?: 'named' | 'default'
   /** Usage counts across the project (populated by extract) */
   usageCount?: {
     direct: number
@@ -70,71 +99,144 @@ export type JcControlType =
   | 'readonly'
   | 'component'
   | 'array'
+  | 'object'
 
 /** Categories for component-type props */
 export type JcComponentPropKind = 'icon' | 'element' | 'node'
 
-// ── Fixture plugin types ─────────────────────────────────────
+// ── Plugin system types ──────────────────────────────────────
 //
-// Fixtures let the host app supply real components (icons, badges, etc.)
-// to the showcase instead of relying on hardcoded SVG placeholders.
-// The host registers one or more JcFixturePlugin instances; internally
-// they are flattened into JcResolvedFixture[] with qualified keys
-// (e.g. 'lucide/star') used as stable identifiers in prop values.
+// Plugins let the host app supply real components (icons, badges, etc.)
+// to the showcase. Each plugin declares which prop types it handles via
+// `match`, provides items (fixtures), and optionally a custom picker UI.
+// Items are resolved to qualified keys ('pluginName/key') used as stable
+// identifiers in prop values.
 
-/**
- * A single fixture item provided by a plugin.
- *
- * @example
- * { key: 'star', label: 'Star', category: 'icons',
- *   render: () => <Star size={20} />,
- *   renderIcon: () => <Star size={14} /> }
- */
-export interface JcFixture {
-  /** Unique within the plugin, e.g. 'star', 'heart' */
+/** How a plugin declares which props it can serve */
+export interface JcPluginMatch {
+  /**
+   * Type names this plugin handles.
+   * Matched against JcPropMeta.rawType and JcPropMeta.type.
+   * e.g. ['LucideIcon'] matches any prop typed `LucideIcon`.
+   */
+  types?: string[]
+  /**
+   * Component kinds this plugin handles.
+   * Matched against JcPropMeta.componentKind.
+   * e.g. ['icon'] matches any prop with componentKind 'icon'.
+   */
+  kinds?: JcComponentPropKind[]
+  /**
+   * Prop name patterns (regex strings) this plugin handles.
+   * e.g. ['^icon$', 'Icon$'] matches props named "icon" or ending in "Icon".
+   */
+  propNames?: string[]
+}
+
+/** A single item provided by a plugin */
+export interface JcPluginItem {
+  /** Unique within the plugin, e.g. 'star' */
   key: string
   /** Human-readable display name, e.g. 'Star' */
   label: string
-  /** Optional grouping used to filter fixtures by componentKind, e.g. 'icons' */
-  category?: string
-  /** Renders the fixture at full size for the preview area */
-  render: () => ReactNode
-  /** Optional small preview (14-16px) for the picker grid; falls back to render() */
-  renderIcon?: () => ReactNode
   /**
-   * Optional raw component constructor for icon-kind props (e.g. LucideIcon).
-   * When a prop expects a component type rather than a rendered element,
-   * this value is passed instead of calling render().
+   * The actual value — a React component constructor, rendered element, etc.
+   * For constructor plugins (asConstructor: true): the component constructor (e.g. Star).
+   * For element plugins: a ReactNode or component constructor.
    */
-  component?: React.ComponentType<any>
+  value: unknown
+  /** Optional search keywords for filtering in the picker */
+  keywords?: string[]
 }
 
-/**
- * A fixture plugin provided by the host app.
- * Create one with `defineFixtures()` for type safety.
- *
- * @example
- * const lucide = defineFixtures({
- *   name: 'lucide',
- *   fixtures: [{ key: 'star', label: 'Star', ... }],
- * })
- */
-export interface JcFixturePlugin {
-  /** Unique plugin name, used as namespace prefix, e.g. 'lucide' */
-  name: string
-  /** The fixture items this plugin provides */
-  fixtures: JcFixture[]
-}
-
-/**
- * A fixture enriched with its plugin origin and a fully qualified key.
- * Produced by `resolveFixturePlugins()` — not created by the host directly.
- */
-export interface JcResolvedFixture extends JcFixture {
-  /** Name of the plugin that owns this fixture */
+/** A resolved plugin item with rendering capabilities (computed internally) */
+export interface JcResolvedPluginItem extends JcPluginItem {
+  /** Name of the plugin that owns this item */
   pluginName: string
   /** Fully qualified key in 'pluginName/key' format, e.g. 'lucide/star' */
   qualifiedKey: string
+  /** Render at full size for preview */
+  render(): ReactNode
+  /** Render at small/compact size for picker grids and thumbnails */
+  renderPreview(): ReactNode
+  /** Get the raw value (component constructor, etc.) */
+  getValue(): unknown
+}
+
+/**
+ * Props passed to custom plugin picker components.
+ * When a plugin provides a `Picker`, this is the interface it receives.
+ *
+ * Plugin authors build their own pickers and can use jc's exported
+ * primitives (e.g. `GridPicker`) as building blocks.
+ */
+export interface JcPluginPickerProps {
+  items: JcResolvedPluginItem[]
+  value: string
+  required: boolean
+  onChange: (qualifiedKey: string) => void
+}
+
+/**
+ * Plugin definition — created via `definePlugin()`.
+ *
+ * @example
+ * const lucide = definePlugin({
+ *   name: 'lucide',
+ *   match: { types: ['LucideIcon'] },
+ *   importPath: 'lucide-react',
+ *   renderProps: { size: 20 },
+ *   previewProps: { size: 14 },
+ *   items: fromComponents(icons),
+ * })
+ */
+export interface JcPlugin {
+  /** Unique plugin name, used as namespace prefix */
+  name: string
+  /** Declares which props this plugin handles */
+  match: JcPluginMatch
+  /** The items this plugin provides */
+  items: JcPluginItem[]
+  /**
+   * Import path for code generation, e.g. 'lucide-react'.
+   * Defaults to the plugin name.
+   */
+  importPath?: string
+  /**
+   * How to render items. Determines render() and renderPreview() on resolved items.
+   * - 'component': value is a React component constructor. render = createElement(value, renderProps).
+   * - 'element': value is already a ReactNode. render = value.
+   * Default: 'component'
+   */
+  itemType?: 'component' | 'element'
+  /**
+   * Default props passed to component items when rendering at full size.
+   * e.g. { size: 20 }. Only used when itemType is 'component'.
+   */
+  renderProps?: Record<string, unknown>
+  /**
+   * Props for the compact preview (picker grids, thumbnails).
+   * Merged on top of renderProps. e.g. { size: 14 }.
+   */
+  previewProps?: Record<string, unknown>
+  /**
+   * Whether this plugin's items should be passed as constructors (true)
+   * or as rendered elements (false) when resolving prop values.
+   * e.g. a LucideIcon prop expects the component constructor, not <Star />.
+   * Default: false (items are rendered via render()).
+   */
+  asConstructor?: boolean
+  /**
+   * Optional custom picker component.
+   * When provided, replaces the default dropdown for this plugin's props.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
+  Picker?: React.ComponentType<any>
+  /**
+   * Priority for conflict resolution (higher wins).
+   * Default: 0. Built-in component fixtures use -1.
+   */
+  priority?: number
 }
 
 /** A single children item — text content or a fixture reference */
@@ -142,6 +244,27 @@ export interface ChildItem {
   type: 'text' | 'fixture'
   /** Plain text when type='text', fixture qualified key when type='fixture' */
   value: string
+}
+
+// ── Extraction warnings ──────────────────────────────────────
+
+/** A warning emitted during the extraction pipeline */
+export type ExtractionWarning =
+  | { type: 'FILE_PARSE_ERROR'; file: string; error: string }
+  | { type: 'FILE_SKIPPED'; file: string; reason: string }
+  | { type: 'PROP_FALLBACK'; component: string; prop: string; from: 'ast' | 'regex' }
+  | { type: 'COMPONENT_SKIPPED'; component: string; reason: string }
+
+/** Extraction result with metadata and warnings */
+export interface ExtractionResult {
+  meta: JcMeta
+  warnings: ExtractionWarning[]
+  stats: {
+    filesScanned: number
+    filesSkipped: number
+    componentsBefore: number
+    componentsAfter: number
+  }
 }
 
 /** User-provided configuration */
