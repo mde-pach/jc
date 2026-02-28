@@ -74,6 +74,16 @@ export function fromComponents(
     })
 }
 
+// ── Value mode resolution ────────────────────────────────────
+
+/**
+ * Resolve the effective value mode for a plugin.
+ * Defaults to `'render'` when not explicitly set.
+ */
+export function resolveValueMode(plugin: JcPlugin): 'render' | 'constructor' | 'element' {
+  return plugin.valueMode ?? 'render'
+}
+
 // ── Plugin resolution ────────────────────────────────────────
 
 /** Normalize a plugin or plugin factory to a JcPlugin */
@@ -84,14 +94,15 @@ export function normalizePlugin(p: JcPlugin | (() => JcPlugin)): JcPlugin {
 /**
  * Flatten an array of plugins into a single resolved item list.
  * Each item receives a `qualifiedKey` ('pluginName/key') and rendering functions
- * derived from the plugin's `itemType`, `renderProps`, and `previewProps`.
+ * derived from the plugin's `valueMode`, `renderProps`, and `previewProps`.
  */
 export function resolvePluginItems(plugins: JcPlugin[]): JcResolvedPluginItem[] {
   const resolved: JcResolvedPluginItem[] = []
   for (const plugin of plugins) {
     const renderProps = plugin.renderProps ?? {}
     const previewProps = { ...renderProps, ...(plugin.previewProps ?? {}) }
-    const isComponent = (plugin.itemType ?? 'component') === 'component'
+    const mode = resolveValueMode(plugin)
+    const isComponent = mode !== 'element'
 
     for (const item of plugin.items) {
       resolved.push({
@@ -114,6 +125,18 @@ export function resolvePluginItems(plugins: JcPlugin[]): JcResolvedPluginItem[] 
 }
 
 // ── Plugin matching ──────────────────────────────────────────
+
+/** Cache compiled propName regex patterns per plugin (avoids re-creating on every match call) */
+let compiledPropNamePatterns = new WeakMap<JcPlugin, RegExp[]>()
+
+function getCompiledPatterns(plugin: JcPlugin): RegExp[] {
+  let patterns = compiledPropNamePatterns.get(plugin)
+  if (!patterns) {
+    patterns = (plugin.match.propNames ?? []).map((p) => new RegExp(p, 'i'))
+    compiledPropNamePatterns.set(plugin, patterns)
+  }
+  return patterns
+}
 
 /**
  * Find the best-matching plugin for a given prop.
@@ -151,10 +174,11 @@ export function getPluginForProp(
       }
     }
 
-    // 3. Prop name pattern match
+    // 3. Prop name pattern match (pre-compiled regex)
     if (match.propNames && match.propNames.length > 0) {
-      for (const pattern of match.propNames) {
-        if (new RegExp(pattern, 'i').test(prop.name)) {
+      const compiled = getCompiledPatterns(plugin)
+      for (const regex of compiled) {
+        if (regex.test(prop.name)) {
           score += 25
           break
         }
@@ -202,22 +226,81 @@ export function getItemsForProp(
 
 // ── Value resolution ─────────────────────────────────────────
 
+/** WeakMap cache: array reference → Map<qualifiedKey, item> for O(1) lookups */
+let itemMapCache = new WeakMap<JcResolvedPluginItem[], Map<string, JcResolvedPluginItem>>()
+
+function getItemMap(items: JcResolvedPluginItem[]): Map<string, JcResolvedPluginItem> {
+  let map = itemMapCache.get(items)
+  if (!map) {
+    map = new Map(items.map((i) => [i.qualifiedKey, i]))
+    itemMapCache.set(items, map)
+  }
+  return map
+}
+
 /**
- * Look up an item by its qualified key.
- * If `asConstructor` is true, returns the raw value (component constructor).
+ * Look up an item by its qualified key (O(1) via cached Map).
+ * When `returnConstructor` is true, returns the raw value (component constructor).
  * Otherwise returns the rendered ReactNode via render().
  */
 export function resolveItemValue(
   qualifiedKey: string | null | undefined,
   items: JcResolvedPluginItem[],
-  asConstructor?: boolean,
+  returnConstructor?: boolean,
 ): unknown {
   if (!qualifiedKey) return undefined
-  const item = items.find((i) => i.qualifiedKey === qualifiedKey)
+  const item = getItemMap(items).get(qualifiedKey)
   if (!item) return undefined
-  if (asConstructor) return item.getValue()
+  if (returnConstructor) return item.getValue()
   return item.render()
 }
+
+// ── Cache management ─────────────────────────────────────────
+
+/**
+ * Clear all module-level caches (WeakMap item lookups and compiled regex patterns).
+ * Useful during HMR or test teardown to avoid stale references.
+ */
+export function clearPluginCaches(): void {
+  compiledPropNamePatterns = new WeakMap()
+  itemMapCache = new WeakMap()
+}
+
+// ── Plugin suggestions ───────────────────────────────────────
+
+/** Registry of known built-in plugins for suggestion messages */
+const KNOWN_BUILTIN_PLUGINS: Array<{
+  name: string
+  types: string[]
+  importPath: string
+  importName: string
+}> = [
+  {
+    name: 'lucide',
+    types: ['LucideIcon', 'LucideProps'],
+    importPath: 'jc/plugins/lucide',
+    importName: 'lucidePlugin',
+  },
+]
+
+/** Check if a prop type matches a known built-in plugin that isn't currently loaded */
+export function suggestPluginForProp(
+  prop: JcPropMeta,
+  loadedPlugins: JcPlugin[],
+): { name: string; importPath: string; importName: string } | null {
+  const loadedNames = new Set(loadedPlugins.map((p) => p.name))
+  for (const known of KNOWN_BUILTIN_PLUGINS) {
+    if (loadedNames.has(known.name)) continue
+    for (const typeName of known.types) {
+      if (prop.type === typeName || prop.rawType?.includes(typeName)) {
+        return { name: known.name, importPath: known.importPath, importName: known.importName }
+      }
+    }
+  }
+  return null
+}
+
+// ── Default item key ─────────────────────────────────────────
 
 /**
  * Get the first item key matching a prop, or undefined.

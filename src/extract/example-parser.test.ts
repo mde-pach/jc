@@ -185,6 +185,7 @@ describe('parseExamplePreset', () => {
     expect(result).toEqual({
       subjectProps: { variant: 'primary', size: 'lg' },
       childrenText: 'Click me',
+      parsedChildren: [{ type: 'text', value: 'Click me' }],
       wrapperProps: {},
     })
   })
@@ -197,6 +198,7 @@ describe('parseExamplePreset', () => {
     expect(result).not.toBeNull()
     expect(result!.subjectProps).toEqual({ value: 'item-1', title: 'Section' })
     expect(result!.childrenText).toBe('Content')
+    expect(result!.parsedChildren).toEqual([{ type: 'text', value: 'Content' }])
     expect(result!.wrapperProps).toEqual({
       Accordion: { type: 'single', collapsible: 'true' },
     })
@@ -207,6 +209,7 @@ describe('parseExamplePreset', () => {
     expect(result).toEqual({
       subjectProps: { placeholder: 'Email' },
       childrenText: '',
+      parsedChildren: [],
       wrapperProps: {},
     })
   })
@@ -231,5 +234,41 @@ describe('parseExamplePreset', () => {
   it('extracts empty children for childless elements', () => {
     const result = parseExamplePreset('<Badge variant="info" />', 'Badge')
     expect(result!.childrenText).toBe('')
+  })
+
+  it('extracts structured children from JSX element children', () => {
+    const result = parseExamplePreset(
+      '<Tooltip content="Copy to clipboard" side="top"><button>Hover me</button></Tooltip>',
+      'Tooltip',
+    )
+    expect(result).not.toBeNull()
+    expect(result!.subjectProps).toEqual({ content: 'Copy to clipboard', side: 'top' })
+    expect(result!.childrenText).toBe('Hover me')
+    expect(result!.parsedChildren).toEqual([
+      { type: 'element', value: 'button', innerText: 'Hover me' },
+    ])
+  })
+
+  it('extracts self-closing JSX element children', () => {
+    const result = parseExamplePreset(
+      '<Dialog trigger={openButton}><Form /></Dialog>',
+      'Dialog',
+    )
+    expect(result).not.toBeNull()
+    expect(result!.childrenText).toBe('Form')
+    expect(result!.parsedChildren).toEqual([
+      { type: 'element', value: 'Form' },
+    ])
+  })
+
+  it('extracts JSX element children with props', () => {
+    const result = parseExamplePreset(
+      '<Card><Badge variant="success">Active</Badge></Card>',
+      'Card',
+    )
+    expect(result).not.toBeNull()
+    expect(result!.parsedChildren).toEqual([
+      { type: 'element', value: 'Badge', props: { variant: 'success' }, innerText: 'Active' },
+    ])
   })
 })

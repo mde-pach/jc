@@ -8,9 +8,14 @@
  */
 
 import { generateFakeValue, getArrayItemType } from '../../lib/faker-map.js'
-import type { JcPropMeta, JcResolvedPluginItem, JcStructuredField } from '../../types.js'
+import type {
+  JcPluginPickerProps,
+  JcPropMeta,
+  JcResolvedPluginItem,
+  JcStructuredField,
+} from '../../types.js'
 import { ComponentPicker } from './component-picker.js'
-import { NodeFieldInput } from './node-field-input.js'
+import { NodePicker } from './node-field-input.js'
 import { inputStyle } from './styles.js'
 
 export function ArrayEditor({
@@ -23,8 +28,7 @@ export function ArrayEditor({
   value: unknown[]
   propMeta: JcPropMeta
   resolvedItems: JcResolvedPluginItem[]
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
   onChange: (value: unknown) => void
 }) {
   const itemInfo = getArrayItemType(propMeta)
@@ -194,8 +198,7 @@ export function StructuredItemEditor({
   item: Record<string, unknown>
   fields: JcStructuredField[]
   resolvedItems: JcResolvedPluginItem[]
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
   onChange: (value: Record<string, unknown>) => void
 }) {
   const updateField = (fieldName: string, fieldValue: unknown) => {
@@ -259,8 +262,7 @@ function StructuredFieldInput({
   field: JcStructuredField
   value: unknown
   resolvedItems: JcResolvedPluginItem[]
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
   onChange: (value: unknown) => void
 }) {
   // Component field with a plugin picker (e.g. icons, avatars) -> delegate to plugin
@@ -278,7 +280,7 @@ function StructuredFieldInput({
 
   // Component field without plugin picker -> text/fixture toggle
   if (field.isComponent) {
-    return <NodeFieldInput value={value} resolvedItems={resolvedItems} onChange={onChange} />
+    return <NodePicker value={value} resolvedItems={resolvedItems} onChange={onChange} />
   }
 
   // Nested structured object (e.g. `address: Address` with sub-fields) → recursive editor
@@ -370,8 +372,7 @@ function ArrayItemInput({
   itemType: string
   isComponent: boolean
   resolvedItems: JcResolvedPluginItem[]
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
   onChange: (value: unknown) => void
 }) {
   // Component items — delegate to plugin Picker or fallback dropdown

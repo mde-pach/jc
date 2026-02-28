@@ -5,10 +5,10 @@ export interface JcStructuredField {
   name: string
   type: string
   optional: boolean
-  /** True when the field type is a component/icon (ReactNode, LucideIcon, etc.) */
+  /** True when the field type is a component (ReactNode, ReactElement, ComponentType, etc.) */
   isComponent: boolean
-  /** Component sub-kind: 'icon' if the type looks icon-like, 'node' for ReactNode/Element */
-  componentKind?: 'icon' | 'node'
+  /** Component sub-kind for React-native types */
+  componentKind?: JcComponentPropKind
   /** Enum values when the field type is a string literal union */
   values?: string[]
   /** Nested structured fields when the field itself is an object type */
@@ -36,14 +36,29 @@ export interface JcPropMeta {
   structuredFields?: JcStructuredField[]
 }
 
+/** A single child parsed from an @example JSX block */
+export interface JcExampleChild {
+  type: 'text' | 'element'
+  /** Text content for 'text' type, tag name for 'element' type */
+  value: string
+  /** Props on the JSX element (only for 'element' type) */
+  props?: Record<string, string>
+  /** Inner text of the JSX element (only for 'element' type) */
+  innerText?: string
+}
+
 /** A parsed @example preset — prop values the user can toggle to */
 export interface JcExamplePreset {
   /** Index of the @example block this came from */
   index: number
+  /** Optional label from `@example Label text` syntax */
+  label?: string
   /** Props extracted from the subject element as string key-value pairs */
   propValues: Record<string, string>
-  /** Text content of the subject element's children (empty if none) */
+  /** Text content of the subject element's children (legacy fallback) */
   childrenText: string
+  /** Structured children preserving JSX elements from the @example */
+  parsedChildren?: JcExampleChild[]
   /** Per-wrapper props from the @example block */
   wrapperProps: Record<string, Record<string, string>>
 }
@@ -100,9 +115,10 @@ export type JcControlType =
   | 'component'
   | 'array'
   | 'object'
+  | 'color'
 
-/** Categories for component-type props */
-export type JcComponentPropKind = 'icon' | 'element' | 'node'
+/** Categories for component-type props (React-native types only — plugins handle library-specific kinds) */
+export type JcComponentPropKind = 'element' | 'node'
 
 // ── Plugin system types ──────────────────────────────────────
 //
@@ -123,7 +139,7 @@ export interface JcPluginMatch {
   /**
    * Component kinds this plugin handles.
    * Matched against JcPropMeta.componentKind.
-   * e.g. ['icon'] matches any prop with componentKind 'icon'.
+   * e.g. ['element'] matches any prop with componentKind 'element'.
    */
   kinds?: JcComponentPropKind[]
   /**
@@ -141,8 +157,8 @@ export interface JcPluginItem {
   label: string
   /**
    * The actual value — a React component constructor, rendered element, etc.
-   * For constructor plugins (asConstructor: true): the component constructor (e.g. Star).
-   * For element plugins: a ReactNode or component constructor.
+   * For constructor plugins (valueMode: 'constructor'): the component constructor (e.g. Star).
+   * For element plugins (valueMode: 'element'): a ReactNode value.
    */
   value: unknown
   /** Optional search keywords for filtering in the picker */
@@ -203,15 +219,17 @@ export interface JcPlugin {
    */
   importPath?: string
   /**
-   * How to render items. Determines render() and renderPreview() on resolved items.
-   * - 'component': value is a React component constructor. render = createElement(value, renderProps).
-   * - 'element': value is already a ReactNode. render = value.
-   * Default: 'component'
+   * How items are rendered and resolved to prop values:
+   * - `'render'`: Component constructors. `createElement` for previews,
+   *   rendered elements for props. (default)
+   * - `'constructor'`: Component constructors. `createElement` for previews,
+   *   raw constructors for props (e.g. LucideIcon).
+   * - `'element'`: Already ReactNode values. Used as-is for both.
    */
-  itemType?: 'component' | 'element'
+  valueMode?: 'render' | 'constructor' | 'element'
   /**
    * Default props passed to component items when rendering at full size.
-   * e.g. { size: 20 }. Only used when itemType is 'component'.
+   * e.g. { size: 20 }. Only used when valueMode is 'render' or 'constructor'.
    */
   renderProps?: Record<string, unknown>
   /**
@@ -220,18 +238,11 @@ export interface JcPlugin {
    */
   previewProps?: Record<string, unknown>
   /**
-   * Whether this plugin's items should be passed as constructors (true)
-   * or as rendered elements (false) when resolving prop values.
-   * e.g. a LucideIcon prop expects the component constructor, not <Star />.
-   * Default: false (items are rendered via render()).
-   */
-  asConstructor?: boolean
-  /**
    * Optional custom picker component.
    * When provided, replaces the default dropdown for this plugin's props.
+   * Receives `JcPluginPickerProps` (items, value, required, onChange).
    */
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
   /**
    * Priority for conflict resolution (higher wins).
    * Default: 0. Built-in component fixtures use -1.
@@ -239,11 +250,21 @@ export interface JcPlugin {
   priority?: number
 }
 
-/** A single children item — text content or a fixture reference */
+/**
+ * A single children item — text content or a fixture reference.
+ *
+ * Unlike prop values (which use plain strings as fixture keys, resolved
+ * via componentKind metadata), children items need an explicit discriminator
+ * because children have no type metadata and text/fixture values are ambiguous.
+ */
 export interface ChildItem {
-  type: 'text' | 'fixture'
-  /** Plain text when type='text', fixture qualified key when type='fixture' */
+  type: 'text' | 'fixture' | 'element'
+  /** Plain text when type='text', fixture qualified key when type='fixture', tag name when type='element' */
   value: string
+  /** Props on the element (only for type='element') */
+  elementProps?: Record<string, string>
+  /** Nested children inside the element (only for type='element') */
+  elementChildren?: ChildItem[]
 }
 
 // ── Extraction warnings ──────────────────────────────────────
@@ -271,6 +292,12 @@ export interface ExtractionResult {
 export interface JcConfig {
   /** Glob pattern for component files (relative to project root) */
   componentGlob: string
+  /**
+   * Multiple glob patterns for component files.
+   * When set, all patterns are used and results deduplicated.
+   * Takes precedence over `componentGlob` when both are set.
+   */
+  componentGlobs?: string[]
   /** Files to exclude from extraction (basenames) */
   excludeFiles?: string[]
   /** Components to exclude by display name */
@@ -288,4 +315,18 @@ export interface JcConfig {
    * @example { '~/': 'src/', '@components/': 'src/components/' }
    */
   pathAlias?: Record<string, string>
+  /**
+   * Custom type-to-componentKind mappings.
+   * Checked before the built-in patterns, allowing users to teach jc
+   * about project-specific component types.
+   * @example { 'CustomSlot': 'element', 'MyNode': 'node' }
+   */
+  componentTypeMap?: Record<string, JcComponentPropKind>
+  /**
+   * Component metadata extractor.
+   * Use `'react-docgen'` (default) for the built-in react-docgen-typescript extractor,
+   * or provide a custom `Extractor` object for alternative extraction strategies.
+   * @default 'react-docgen'
+   */
+  extractor?: 'react-docgen' | import('./extract/extractor.js').Extractor
 }

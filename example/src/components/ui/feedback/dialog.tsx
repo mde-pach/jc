@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 /**
  * A modal dialog built on Radix UI primitives.
  *
- * @example <Dialog title="Confirm action" description="Are you sure you want to proceed?" defaultOpen>Dialog body content here.</Dialog>
+ * @example <Dialog title="Confirm action" description="Are you sure you want to proceed?" trigger={"hello"} defaultOpen>Dialog body content here.</Dialog>
  * @example <Dialog title="New project" defaultOpen>Fill in the details to create a project.</Dialog>
  */
 export interface DialogProps {

@@ -20,10 +20,10 @@ export default function ConfigurationPage() {
           code={`import { defineConfig } from 'jc/config'
 
 export default defineConfig({
-  componentFiles: ['src/components/ui/**/*.tsx'],
+  componentGlob: 'src/components/ui/**/*.tsx',
   outputDir: 'src/jc/generated',
-  pathAlias: { '@/': 'src/' },
-  filteredProps: ['className', 'style', 'ref'],
+  excludeComponents: ['MyInternalComponent'],
+  filteredProps: ['testId'],
 })`}
         />
       </Section>
@@ -32,16 +32,35 @@ export default defineConfig({
         <DataTable
           columns={['Option', 'Type', 'Default', 'Description']}
           rows={[
-            ['componentFiles', 'string[]', 'src/components/ui/**/*.tsx', 'Glob patterns for component discovery'],
-            ['excludeFiles', 'string[]', '**/*.test.*, **/*.stories.*', 'Glob patterns to skip'],
+            ['componentGlob', 'string', 'src/components/ui/**/*.tsx', 'Single glob pattern for component discovery'],
+            ['componentGlobs', 'string[]', '—', 'Multiple glob patterns (takes precedence over componentGlob)'],
+            ['excludeFiles', 'string[]', "['index.ts', 'toaster.tsx', 'form.tsx', 'form-fields.tsx']", 'File names to skip during extraction'],
+            ['excludeComponents', 'string[]', "['DialogPortal', 'DialogOverlay', 'DialogClose']", 'Component names to exclude from the showcase'],
+            ['filteredProps', 'string[]', "['ref', 'key', 'dangerouslySetInnerHTML', ...]", 'Exact prop names to exclude from controls'],
+            ['filteredPropPatterns', 'string[]', "['^\\ on(?!OpenChange|...)[A-Z]', '^aria-', '^data-']", 'Regex patterns to exclude props'],
             ['outputDir', 'string', 'src/jc/generated', 'Output directory for meta.json and registry.ts'],
-            ['pathAlias', 'Record<string, string>', '{}', 'Path alias mapping for registry imports'],
-            ['filteredProps', 'string[]', 'className, style, ref, key', 'Prop names to exclude from controls'],
-            ['filteredPropPatterns', 'string[]', '[]', 'Regex patterns to exclude props (e.g. aria-.*)'],
-            ['tsConfigPath', 'string', 'tsconfig.json', 'Path to tsconfig for type resolution'],
+            ['pathAlias', 'Record<string, string>', "{ '@/': 'src/' }", 'Path alias mapping — auto-detected from tsconfig.json'],
+            ['componentTypeMap', 'Record<string, JcComponentPropKind>', '{}', 'Manual type → kind mapping (element | node)'],
+            ['extractor', 'Extractor', '(react-docgen-typescript)', 'Custom extraction engine'],
           ]}
           monoFirstCol
           striped
+        />
+      </Section>
+
+      <Section title="Multiple globs">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          Use <CodeBlock code="componentGlobs" inline /> when your components live in multiple
+          directories. It takes precedence over <CodeBlock code="componentGlob" inline /> when set:
+        </p>
+        <CodeBlock
+          language="ts"
+          code={`defineConfig({
+  componentGlobs: [
+    'src/components/ui/**/*.tsx',
+    'src/components/shared/**/*.tsx',
+  ],
+})`}
         />
       </Section>
 
@@ -52,18 +71,18 @@ export default defineConfig({
         </p>
         <CodeBlock
           language="ts"
-          code={`// Default excludeFiles: ['**/*.test.*', '**/*.stories.*']
+          code={`// Default excludeFiles: ['index.ts', 'toaster.tsx', 'form.tsx', 'form-fields.tsx']
 
 defineConfig({
-  excludeFiles: ['**/*.spec.*'],
+  excludeFiles: ['my-internal.tsx'],
 })
 
-// Result: ['**/*.test.*', '**/*.stories.*', '**/*.spec.*']`}
+// Result: ['index.ts', 'toaster.tsx', 'form.tsx', 'form-fields.tsx', 'my-internal.tsx']`}
         />
         <div className="mt-4">
           <Callout intent="info">
-            This applies to <CodeBlock code="componentFiles" inline />,{' '}
-            <CodeBlock code="excludeFiles" inline />,{' '}
+            This applies to <CodeBlock code="excludeFiles" inline />,{' '}
+            <CodeBlock code="excludeComponents" inline />,{' '}
             <CodeBlock code="filteredProps" inline />, and{' '}
             <CodeBlock code="filteredPropPatterns" inline />.
           </Callout>
@@ -72,24 +91,28 @@ defineConfig({
 
       <Section title="Path aliases">
         <p className="text-sm text-fg-muted mb-4 leading-relaxed">
-          If your project uses TypeScript path aliases, configure them so the generated registry
-          produces correct import paths:
+          Path aliases are auto-detected from your <CodeBlock code="tsconfig.json" inline /> when
+          running <CodeBlock code="jc extract" inline />. The default mapping is{' '}
+          <CodeBlock code="{'@/': 'src/'}" inline />. Override it in your config if your project uses
+          a different structure:
         </p>
         <CodeBlock
           language="ts"
           code={`defineConfig({
-  pathAlias: { '@/': 'src/' },
+  pathAlias: { '~/': 'src/' },
 })
 
 // Component at: src/components/ui/button.tsx
-// Registry generates: import('@/components/ui/button')`}
+// Registry generates: import('~/components/ui/button')`}
         />
       </Section>
 
       <Section title="Prop filtering">
         <p className="text-sm text-fg-muted mb-4 leading-relaxed">
-          Props like <CodeBlock code="className" inline /> and <CodeBlock code="ref" inline /> are
-          filtered by default. Add more with exact names or regex patterns:
+          HTML noise props like <CodeBlock code="ref" inline />,{' '}
+          <CodeBlock code="dangerouslySetInnerHTML" inline />, and all <CodeBlock code="aria-*" inline />{' '}
+          / <CodeBlock code="data-*" inline /> props are filtered by default. Add more with exact
+          names or regex patterns:
         </p>
         <CodeBlock
           language="ts"
@@ -98,7 +121,25 @@ defineConfig({
   filteredProps: ['testId', 'data-testid'],
 
   // Pattern match — any prop matching these regexes
-  filteredPropPatterns: ['aria-.*', 'on[A-Z].*'],
+  filteredPropPatterns: ['^debug[A-Z]'],
+})`}
+        />
+      </Section>
+
+      <Section title="Component type map">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          For custom component prop types that jc cannot automatically classify, use{' '}
+          <CodeBlock code="componentTypeMap" inline /> to manually map a type name to a kind:
+        </p>
+        <CodeBlock
+          language="ts"
+          code={`defineConfig({
+  componentTypeMap: {
+    // Treat props typed as 'MyIconType' as renderable elements
+    MyIconType: 'element',
+    // Treat props typed as 'SlotContent' as React node slots
+    SlotContent: 'node',
+  },
 })`}
         />
       </Section>

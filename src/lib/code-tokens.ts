@@ -12,38 +12,25 @@ import type { FixtureOverride } from './use-showcase-state.js'
 import { applyPathAlias, COMPONENT_FIXTURE_PREFIX, toPascalCase } from './utils.js'
 
 /**
- * Well-known plugin → npm package mappings (fallback).
- * Prefer using `importPath` on JcPlugin instead.
- */
-const PLUGIN_PACKAGE_MAP: Record<string, string> = {
-  lucide: 'lucide-react',
-  'react-icons': 'react-icons',
-  heroicons: '@heroicons/react/24/outline',
-  phosphor: '@phosphor-icons/react',
-}
-
-/**
  * Resolve the import path for a fixture plugin.
- * Checks plugin's own importPath first, then legacy PLUGIN_PACKAGE_MAP, then uses plugin name.
+ * Uses the plugin's `importPath` if available, otherwise falls back to the plugin name.
  */
 function resolvePluginImportPath(
   pluginName: string,
   pluginImportPaths: Map<string, string>,
 ): string {
-  return pluginImportPaths.get(pluginName) ?? PLUGIN_PACKAGE_MAP[pluginName] ?? pluginName
+  return pluginImportPaths.get(pluginName) ?? pluginName
 }
 
 /**
  * Build a Map of plugin name → import path from resolved fixtures.
- * Prefers the `importPath` field from the original plugin definition.
+ * Uses plugin name as the default import path.
  */
 export function buildPluginImportMap(fixtures: JcResolvedPluginItem[]): Map<string, string> {
   const map = new Map<string, string>()
   for (const f of fixtures) {
     if (!map.has(f.pluginName)) {
-      // The importPath is stored at the plugin level but carried through to resolved fixtures
-      // via the pluginName — we check PLUGIN_PACKAGE_MAP as fallback
-      map.set(f.pluginName, PLUGIN_PACKAGE_MAP[f.pluginName] ?? f.pluginName)
+      map.set(f.pluginName, f.pluginName)
     }
   }
   return map
@@ -105,7 +92,7 @@ export function generateImportTokens(
       }
       return
     }
-    // Plugin fixtures → import from package (prefer importPath, fall back to legacy map)
+    // Plugin fixtures → import from package
     const fixture = fixtures.find((f) => f.qualifiedKey === qualifiedKey)
     if (fixture) {
       const pkg = resolvePluginImportPath(fixture.pluginName, fixturePluginImportPaths)
@@ -414,6 +401,33 @@ export function generateCodeTokens(
           const codeStr = fixtureToCodeString(item.value, fixtures)
           childTokenGroups.push([{ text: codeStr, color: C.component }])
         }
+      } else if (item.type === 'element') {
+        const group: CodeToken[] = []
+        group.push({ text: '<', color: C.bracket }, { text: item.value, color: C.tag })
+        if (item.elementProps) {
+          for (const [k, v] of Object.entries(item.elementProps)) {
+            group.push(
+              { text: ' ', color: '' },
+              { text: k, color: C.prop },
+              { text: '=', color: C.punctuation },
+              { text: `"${v}"`, color: C.string },
+            )
+          }
+        }
+        if (item.elementChildren && item.elementChildren.length > 0) {
+          group.push({ text: '>', color: C.bracket })
+          for (const child of item.elementChildren) {
+            group.push({ text: child.value, color: C.text })
+          }
+          group.push(
+            { text: '</', color: C.bracket },
+            { text: item.value, color: C.tag },
+            { text: '>', color: C.bracket },
+          )
+        } else {
+          group.push({ text: ' />', color: C.bracket })
+        }
+        childTokenGroups.push(group)
       } else if (item.value) {
         childTokenGroups.push([{ text: item.value, color: C.text }])
       }

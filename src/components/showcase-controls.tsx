@@ -11,7 +11,8 @@
 
 import { useState } from 'react'
 import { resolveControlType } from '../lib/faker-map.js'
-import { getItemsForProp, getPluginForProp } from '../lib/plugins.js'
+import { getItemsForProp, getPluginForProp, suggestPluginForProp } from '../lib/plugins.js'
+import { useOptionalShowcaseContext } from '../lib/showcase-context.js'
 import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import type {
   ChildItem,
@@ -25,53 +26,74 @@ import { ComponentFixtureEditor, FixturePicker, ShowcaseField } from './field/in
 import { inputStyle } from './field/styles.js'
 
 interface ShowcaseControlsProps {
-  component: JcComponentMeta
-  propValues: Record<string, unknown>
-  childrenItems: ChildItem[]
-  resolvedItems: JcResolvedPluginItem[]
-  plugins: JcPlugin[]
-  meta: JcMeta
-  fixtureOverrides: Record<string, FixtureOverride>
-  onPropChange: (propName: string, value: unknown) => void
-  onAddChildItem: (item?: ChildItem) => void
-  onRemoveChildItem: (index: number) => void
-  onUpdateChildItem: (index: number, item: ChildItem) => void
-  onFixturePropChange: (slotKey: string, propName: string, value: unknown) => void
-  onFixtureChildrenChange: (slotKey: string, text: string) => void
-  wrapperMetas: JcComponentMeta[]
-  wrapperPropsMap: Record<string, Record<string, unknown>>
-  onWrapperPropChange: (wrapperName: string, propName: string, value: unknown) => void
-  presetMode: 'generated' | number
-  examples: JcExamplePreset[]
-  onPresetModeChange: (mode: 'generated' | number) => void
-  onReset: () => void
+  component?: JcComponentMeta
+  propValues?: Record<string, unknown>
+  childrenItems?: ChildItem[]
+  resolvedItems?: JcResolvedPluginItem[]
+  plugins?: JcPlugin[]
+  meta?: JcMeta
+  fixtureOverrides?: Record<string, FixtureOverride>
+  onPropChange?: (propName: string, value: unknown) => void
+  onAddChildItem?: (item?: ChildItem) => void
+  onRemoveChildItem?: (index: number) => void
+  onUpdateChildItem?: (index: number, item: ChildItem) => void
+  onFixturePropChange?: (slotKey: string, propName: string, value: unknown) => void
+  onFixtureChildrenChange?: (slotKey: string, text: string) => void
+  wrapperMetas?: JcComponentMeta[]
+  wrapperPropsMap?: Record<string, Record<string, unknown>>
+  onWrapperPropChange?: (wrapperName: string, propName: string, value: unknown) => void
+  presetMode?: 'generated' | number
+  examples?: JcExamplePreset[]
+  onPresetModeChange?: (mode: 'generated' | number) => void
+  onReset?: () => void
 }
 
-export function ShowcaseControls({
-  component,
-  propValues,
-  childrenItems,
-  resolvedItems,
-  plugins,
-  meta,
-  fixtureOverrides,
-  onPropChange,
-  onAddChildItem,
-  onRemoveChildItem,
-  onUpdateChildItem,
-  onFixturePropChange,
-  onFixtureChildrenChange,
-  wrapperMetas,
-  wrapperPropsMap,
-  onWrapperPropChange,
-  presetMode,
-  examples,
-  onPresetModeChange,
-  onReset,
-}: ShowcaseControlsProps) {
+export function ShowcaseControls(props: ShowcaseControlsProps) {
+  const ctx = useOptionalShowcaseContext()
+
+  // Resolve each prop: explicit prop wins, then context fallback
+  const component = props.component ?? ctx?.state.selectedComponent
+  const propValues = props.propValues ?? ctx?.state.propValues ?? {}
+  const childrenItems = props.childrenItems ?? ctx?.state.childrenItems ?? []
+  const resolvedItems = props.resolvedItems ?? ctx?.resolvedItems ?? []
+  const plugins = props.plugins ?? ctx?.plugins ?? []
+  const meta = props.meta ?? ctx?.meta
+  const fixtureOverrides = props.fixtureOverrides ?? ctx?.state.fixtureOverrides ?? {}
+  const noop = () => {}
+  const onPropChange = props.onPropChange ?? ctx?.state.setPropValue ?? noop
+  const onAddChildItem = props.onAddChildItem ?? ctx?.state.addChildItem ?? noop
+  const onRemoveChildItem = props.onRemoveChildItem ?? ctx?.state.removeChildItem ?? noop
+  const onUpdateChildItem = props.onUpdateChildItem ?? ctx?.state.updateChildItem ?? noop
+  const onFixturePropChange = props.onFixturePropChange ?? ctx?.state.setFixturePropValue ?? noop
+  const onFixtureChildrenChange = props.onFixtureChildrenChange ?? ctx?.state.setFixtureChildrenText ?? noop
+  const wrapperMetas = props.wrapperMetas ?? ctx?.wrapperMetas ?? []
+  const wrapperPropsMap = props.wrapperPropsMap ?? ctx?.state.wrapperPropsMap ?? {}
+  const onWrapperPropChange = props.onWrapperPropChange ?? ctx?.state.setWrapperPropValue ?? noop
+  const presetMode = props.presetMode ?? ctx?.state.presetMode ?? 'generated'
+  const examples = props.examples ?? component?.examples ?? []
+  const onPresetModeChange = props.onPresetModeChange ?? ctx?.state.setPresetMode ?? noop
+  const onReset = props.onReset ?? ctx?.state.resetProps ?? noop
+  const defaultPropValues = ctx?.state.defaultPropValues ?? {}
+
+  // Cannot render without a component or meta
+  if (!component || !meta) return null
   const propEntries = Object.values(component.props)
   const hasFixtures = resolvedItems.length > 0
   const hasWrappers = wrapperMetas.length > 0
+
+  // Count modified props (different from defaults)
+  const modifiedCount = propEntries.filter((prop) => {
+    const current = propValues[prop.name]
+    const def = defaultPropValues[prop.name]
+    if (current === def) return false
+    if (current === undefined && def === undefined) return false
+    // Deep compare for objects/arrays
+    try {
+      return JSON.stringify(current) !== JSON.stringify(def)
+    } catch {
+      return current !== def
+    }
+  }).length
 
   // Active tab: component name or a wrapper name
   const [activeTab, setActiveTab] = useState(component.displayName)
@@ -146,13 +168,36 @@ export function ShowcaseControls({
           style={{
             fontSize: '10px',
             fontWeight: 500,
-            color: 'var(--jc-accent)',
+            color: modifiedCount > 0 ? 'var(--jc-accent)' : 'inherit',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
+            opacity: modifiedCount > 0 ? 1 : 0.4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
           }}
         >
           Reset
+          {modifiedCount > 0 && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '14px',
+                height: '14px',
+                padding: '0 3px',
+                borderRadius: '7px',
+                backgroundColor: 'var(--jc-accent)',
+                color: 'var(--jc-accent-fg)',
+                fontSize: '9px',
+                fontWeight: 700,
+              }}
+            >
+              {modifiedCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -187,7 +232,7 @@ export function ShowcaseControls({
             {examples.map((ex) => (
               <TabButton
                 key={ex.index}
-                label={`Ex ${ex.index + 1}`}
+                label={ex.label ?? `Ex ${ex.index + 1}`}
                 active={presetMode === ex.index}
                 onClick={() => onPresetModeChange(ex.index)}
               />
@@ -224,99 +269,151 @@ export function ShowcaseControls({
               />
             )}
 
-            {propEntries.length > 0
-              ? propEntries.map((prop) => {
-                  const controlType = resolveControlType(prop)
-                  const matchingPlugin = controlType === 'component' ? getPluginForProp(prop, plugins) : null
-                  const propItems =
-                    controlType === 'component'
-                      ? getItemsForProp(prop, plugins, resolvedItems)
-                      : controlType === 'array'
-                        ? resolvedItems
-                        : undefined
-                  return (
-                    <ShowcaseField
-                      key={prop.name}
-                      label={prop.name}
-                      description={prop.description || undefined}
-                      controlType={controlType}
-                      value={propValues[prop.name]}
-                      options={prop.values}
-                      componentKind={prop.componentKind}
-                      resolvedItems={propItems}
-                      propMeta={prop}
-                      plugins={plugins}
-                      meta={meta}
-                      fixtureOverrides={fixtureOverrides}
-                      Picker={matchingPlugin?.Picker}
-                      onFixturePropChange={onFixturePropChange}
-                      onFixtureChildrenChange={onFixtureChildrenChange}
-                      onChange={(v) => onPropChange(prop.name, v)}
-                    />
-                  )
-                })
-              : !component.acceptsChildren && (
-                  <p
-                    style={{
-                      fontSize: '11px',
-                      opacity: 0.4,
-                      fontStyle: 'italic',
-                      textAlign: 'center',
-                      padding: '16px 0',
-                    }}
-                  >
-                    No editable props
-                  </p>
-                )}
+            <PropEditorList
+              props={propEntries}
+              values={propValues}
+              defaultValues={defaultPropValues}
+              plugins={plugins}
+              resolvedItems={resolvedItems}
+              meta={meta}
+              fixtureOverrides={fixtureOverrides}
+              emptyMessage={component.acceptsChildren ? undefined : 'No editable props'}
+              onPropChange={onPropChange}
+              onFixturePropChange={onFixturePropChange}
+              onFixtureChildrenChange={onFixtureChildrenChange}
+            />
           </>
         ) : activeWrapperMeta ? (
-          Object.values(activeWrapperMeta.props).length > 0 ? (
-            Object.values(activeWrapperMeta.props).map((prop) => {
-              const controlType = resolveControlType(prop)
-              const matchingPlugin = controlType === 'component' ? getPluginForProp(prop, plugins) : null
-              const propItems =
-                controlType === 'component'
-                  ? getItemsForProp(prop, plugins, resolvedItems)
-                  : controlType === 'array'
-                    ? resolvedItems
-                    : undefined
-              return (
-                <ShowcaseField
-                  key={prop.name}
-                  label={prop.name}
-                  description={prop.description || undefined}
-                  controlType={controlType}
-                  value={wrapperPropsMap[activeTab]?.[prop.name]}
-                  options={prop.values}
-                  componentKind={prop.componentKind}
-                  resolvedItems={propItems}
-                  propMeta={prop}
-                  plugins={plugins}
-                  meta={meta}
-                  fixtureOverrides={fixtureOverrides}
-                  Picker={matchingPlugin?.Picker}
-                  onFixturePropChange={onFixturePropChange}
-                  onFixtureChildrenChange={onFixtureChildrenChange}
-                  onChange={(v) => onWrapperPropChange(activeTab, prop.name, v)}
-                />
-              )
-            })
-          ) : (
-            <p
-              style={{
-                fontSize: '11px',
-                opacity: 0.4,
-                fontStyle: 'italic',
-                textAlign: 'center',
-                padding: '16px 0',
-              }}
-            >
-              No editable props
-            </p>
-          )
+          <PropEditorList
+            props={Object.values(activeWrapperMeta.props)}
+            values={wrapperPropsMap[activeTab] ?? {}}
+            plugins={plugins}
+            resolvedItems={resolvedItems}
+            meta={meta}
+            fixtureOverrides={fixtureOverrides}
+            emptyMessage="No editable props"
+            onPropChange={(name, v) => onWrapperPropChange(activeTab, name, v)}
+            onFixturePropChange={onFixturePropChange}
+            onFixtureChildrenChange={onFixtureChildrenChange}
+          />
         ) : null}
       </div>
     </div>
+  )
+}
+
+// ── Prop editor list (shared between component + wrapper tabs) ──
+
+function PropEditorList({
+  props,
+  values,
+  defaultValues,
+  plugins,
+  resolvedItems,
+  meta,
+  fixtureOverrides,
+  emptyMessage,
+  onPropChange,
+  onFixturePropChange,
+  onFixtureChildrenChange,
+}: {
+  props: import('../types.js').JcPropMeta[]
+  values: Record<string, unknown>
+  defaultValues?: Record<string, unknown>
+  plugins: JcPlugin[]
+  resolvedItems: JcResolvedPluginItem[]
+  meta: JcMeta
+  fixtureOverrides: Record<string, FixtureOverride>
+  emptyMessage?: string
+  onPropChange: (propName: string, value: unknown) => void
+  onFixturePropChange: (slotKey: string, propName: string, value: unknown) => void
+  onFixtureChildrenChange: (slotKey: string, text: string) => void
+}) {
+  if (props.length === 0) {
+    return emptyMessage ? (
+      <p
+        style={{
+          fontSize: '11px',
+          opacity: 0.4,
+          fontStyle: 'italic',
+          textAlign: 'center',
+          padding: '16px 0',
+        }}
+      >
+        {emptyMessage}
+      </p>
+    ) : null
+  }
+
+  return (
+    <>
+      {props.map((prop) => {
+        const controlType = resolveControlType(prop)
+        const matchingPlugin = controlType === 'component' ? getPluginForProp(prop, plugins) : null
+        const hasRealPlugin = matchingPlugin !== null && (matchingPlugin.priority ?? 0) >= 0
+        const propItems =
+          controlType === 'component'
+            ? getItemsForProp(prop, plugins, resolvedItems)
+            : controlType === 'array'
+              ? resolvedItems
+              : undefined
+        const suggestion =
+          controlType === 'component' && !hasRealPlugin
+            ? suggestPluginForProp(prop, plugins)
+            : undefined
+
+        // Check if this prop has been modified from its default
+        let isModified = false
+        if (defaultValues && controlType !== 'readonly') {
+          const current = values[prop.name]
+          const def = defaultValues[prop.name]
+          if (current !== def) {
+            try {
+              isModified = JSON.stringify(current) !== JSON.stringify(def)
+            } catch {
+              isModified = true
+            }
+          }
+        }
+
+        return (
+          <div key={prop.name} style={{ position: 'relative' }}>
+            {isModified && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '-8px',
+                  top: '4px',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--jc-accent)',
+                }}
+                title="Modified from default"
+              />
+            )}
+            <ShowcaseField
+              label={prop.name}
+              description={prop.description || undefined}
+              controlType={controlType}
+              value={values[prop.name]}
+              options={prop.values}
+              componentKind={prop.componentKind}
+              resolvedItems={propItems}
+              propMeta={prop}
+              plugins={plugins}
+              meta={meta}
+              fixtureOverrides={fixtureOverrides}
+              Picker={matchingPlugin?.Picker}
+              pluginSuggestion={suggestion}
+              onFixturePropChange={onFixturePropChange}
+              onFixtureChildrenChange={onFixtureChildrenChange}
+              onChange={(v) => onPropChange(prop.name, v)}
+            />
+          </div>
+        )
+      })}
+    </>
   )
 }
 

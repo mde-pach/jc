@@ -90,7 +90,7 @@ describe('isTypeName', () => {
     expect(isTypeName('ReactElement')).toBe(true)
     expect(isTypeName('ReactPortal')).toBe(true)
     expect(isTypeName('ComponentType')).toBe(true)
-    expect(isTypeName('LucideIcon')).toBe(true)
+    expect(isTypeName('LucideIcon')).toBe(false) // library-specific, not a TS type name
     expect(isTypeName('Element')).toBe(true)
   })
 
@@ -173,16 +173,16 @@ describe('cleanValues', () => {
 // ── detectComponentKind ───────────────────────────────────────
 
 describe('detectComponentKind', () => {
-  it('detects LucideIcon from rawType', () => {
-    expect(detectComponentKind('icon', 'LucideIcon')).toBe('icon')
+  it('returns undefined for LucideIcon (library-specific type, not React-native)', () => {
+    expect(detectComponentKind('icon', 'LucideIcon')).toBeUndefined()
   })
 
-  it('detects IconType from rawType', () => {
-    expect(detectComponentKind('myProp', 'IconType')).toBe('icon')
+  it('returns undefined for IconType (library-specific type, not React-native)', () => {
+    expect(detectComponentKind('myProp', 'IconType')).toBeUndefined()
   })
 
-  it('detects ComponentType from rawType', () => {
-    expect(detectComponentKind('renderer', 'ComponentType')).toBe('icon')
+  it('detects ComponentType as element (React-native type)', () => {
+    expect(detectComponentKind('renderer', 'ComponentType')).toBe('element')
   })
 
   it('detects ReactElement from rawType', () => {
@@ -197,30 +197,31 @@ describe('detectComponentKind', () => {
     expect(detectComponentKind('content', 'ReactNode')).toBe('node')
   })
 
-  it('detects icon-named props via source', () => {
-    expect(detectComponentKind('icon', 'enum', 'icon?: LucideIcon')).toBe('icon')
-    expect(detectComponentKind('icon', 'enum', 'icon?: React.ReactNode')).toBe('element')
+  it('ignores source param and only uses rawType for detection', () => {
+    // Source parameter is ignored; only rawType matters
+    expect(detectComponentKind('icon', 'enum', 'icon?: LucideIcon')).toBeUndefined()
+    expect(detectComponentKind('icon', 'ReactNode', 'icon?: string')).toBe('node')
   })
 
-  it('defaults icon-named props to icon kind', () => {
-    expect(detectComponentKind('icon', 'enum')).toBe('icon')
-    expect(detectComponentKind('leftIcon', 'enum')).toBe('icon')
+  it('returns undefined for prop name heuristics (icon, leftIcon, etc.)', () => {
+    // No prop name heuristics anymore
+    expect(detectComponentKind('icon', 'enum')).toBeUndefined()
+    expect(detectComponentKind('leftIcon', 'enum')).toBeUndefined()
   })
 
-  it('detects confident node names', () => {
-    expect(detectComponentKind('badge', 'ReactNode')).toBe('node')
-    expect(detectComponentKind('action', 'enum')).toBe('node')
-    expect(detectComponentKind('prefix', 'ReactNode')).toBe('node')
+  it('returns undefined for confident node name heuristics (badge, action, prefix)', () => {
+    // No prop name heuristics for badge, action, prefix
+    expect(detectComponentKind('badge', 'ReactNode')).toBe('node')  // But ReactNode itself detects → 'node'
+    expect(detectComponentKind('action', 'enum')).toBeUndefined()  // enum without ReactNode/ReactElement → undefined
+    expect(detectComponentKind('prefix', 'enum')).toBeUndefined()  // enum without ReactNode/ReactElement → undefined
   })
 
-  it('only detects less-confident names when type matches', () => {
-    expect(detectComponentKind('header', 'string')).toBeUndefined()
-    expect(detectComponentKind('header', 'ReactNode')).toBe('node')
-    // JSX.Element hits type-based detection first → 'element' (not 'node')
-    expect(detectComponentKind('trigger', 'JSX.Element')).toBe('element')
-    // With a generic 'enum' type, less-confident names only match Node/Element patterns
-    expect(detectComponentKind('trigger', 'enum')).toBeUndefined()
-    expect(detectComponentKind('label', 'ReactNode')).toBe('node')
+  it('detects based only on rawType, not prop name', () => {
+    expect(detectComponentKind('header', 'string')).toBeUndefined()  // string → undefined
+    expect(detectComponentKind('header', 'ReactNode')).toBe('node')  // ReactNode → 'node'
+    expect(detectComponentKind('trigger', 'JSX.Element')).toBe('element')  // JSX.Element → 'element'
+    expect(detectComponentKind('trigger', 'enum')).toBeUndefined()  // enum → undefined
+    expect(detectComponentKind('label', 'enum')).toBeUndefined()  // enum → undefined
   })
 
   it('returns undefined for structured object types containing ReactNode', () => {

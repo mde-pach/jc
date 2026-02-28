@@ -18,7 +18,7 @@ export { ComponentFixtureEditor, FixturePicker, ShowcaseField } from './componen
 
 // Primitives for plugin authors
 export { GridPicker } from './components/field/grid-picker.js'
-export { NodeFieldInput } from './components/field/node-field-input.js'
+export { NodePicker } from './components/field/node-field-input.js'
 
 // State hook
 export { useShowcaseState } from './lib/use-showcase-state.js'
@@ -58,7 +58,7 @@ export { FixtureRegistry } from './lib/fixture-registry.js'
 export { renderComponentFixture, fixtureToCodeString } from './lib/fixtures.js'
 
 // Plugin internals
-export { resolvePluginItems, resolveItemValue, getPluginForProp, getItemsForProp } from './lib/plugins.js'
+export { resolvePluginItems, resolveItemValue, resolveValueMode, getPluginForProp, getItemsForProp, suggestPluginForProp, clearPluginCaches } from './lib/plugins.js'
 
 // Faker strategy (extensible default value generation)
 export { createFakerResolver, defineFakerStrategy } from './lib/faker-strategy.js'

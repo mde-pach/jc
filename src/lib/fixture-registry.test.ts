@@ -6,7 +6,7 @@ import { FixtureRegistry } from './fixture-registry.js'
 
 const iconsPlugin: JcPlugin = {
   name: 'lucide',
-  match: { types: ['LucideIcon'], kinds: ['icon'] },
+  match: { types: ['LucideIcon'] },
   items: [
     { key: 'star', label: 'Star', value: 'star-comp' },
     { key: 'heart', label: 'Heart', value: 'heart-comp' },

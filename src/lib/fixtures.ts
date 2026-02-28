@@ -15,7 +15,7 @@ import {
 } from 'react'
 import type { JcMeta, JcPlugin, JcPropMeta, JcResolvedPluginItem } from '../types.js'
 import { generateDefaults, generateFakeChildren } from './faker-map.js'
-import { getPluginForProp, resolveItemValue, resolvePluginItems } from './plugins.js'
+import { getPluginForProp, resolveItemValue, resolvePluginItems, resolveValueMode } from './plugins.js'
 import {
   COMPONENT_FIXTURE_CATEGORY,
   COMPONENT_FIXTURE_PREFIX,
@@ -56,7 +56,7 @@ export function renderComponentFixture(
   for (const [propName, prop] of Object.entries(comp.props)) {
     if (typeof resolvedProps[propName] === 'string') {
       const matchingPlugin = getPluginForProp(prop, plugins)
-      if (matchingPlugin?.asConstructor) {
+      if (matchingPlugin && resolveValueMode(matchingPlugin) === 'constructor') {
         const resolved = resolveItemValue(resolvedProps[propName] as string, resolvedItems, true)
         if (resolved !== undefined) resolvedProps[propName] = resolved
       }
@@ -207,7 +207,7 @@ export function buildComponentFixturesPlugin(
   return {
     name: COMPONENT_FIXTURE_CATEGORY,
     match: { kinds: ['element', 'node'] },
-    itemType: 'element' as const,
+    valueMode: 'element' as const,
     priority: -1,
     items,
   }
@@ -246,7 +246,7 @@ export function resolveComponentFixtureItems(
           for (const [propName, prop] of Object.entries(comp.props)) {
             if (typeof resolvedProps[propName] === 'string') {
               const matchingPlugin = getPluginForProp(prop, basePlugins)
-              if (matchingPlugin?.asConstructor) {
+              if (matchingPlugin && resolveValueMode(matchingPlugin) === 'constructor') {
                 const resolved = resolveItemValue(
                   resolvedProps[propName] as string,
                   baseItems,

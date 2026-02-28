@@ -16,6 +16,7 @@ import type {
 } from '../types.js'
 import { resolvePluginItems } from './plugins.js'
 import {
+  type FixtureOverride,
   type ShowcaseDefaults,
   computeDefaults,
   computeFixtureInit,
@@ -35,11 +36,8 @@ import { COMPONENT_FIXTURE_PREFIX, toSlotKeyString } from './utils.js'
 
 // ── Public types ────────────────────────────────────────────────
 
-/** Per-slot fixture override: custom prop values and children text for a selected component fixture */
-export interface FixtureOverride {
-  props: Record<string, unknown>
-  childrenText: string
-}
+// Re-export the single source of truth from the reducer
+export type { FixtureOverride } from './showcase-reducer.js'
 
 /** Full state shape returned by useShowcaseState */
 export interface ShowcaseState {
@@ -65,6 +63,8 @@ export interface ShowcaseState {
   presetMode: 'generated' | number
   /** Number of instances to render (1/3/5). Only active in generated mode. */
   instanceCount: 1 | 3 | 5
+  /** Default prop values for the current component (for change detection) */
+  defaultPropValues: Record<string, unknown>
   selectComponent: (name: string) => void
   setSearch: (search: string) => void
   setPropValue: (propName: string, value: unknown) => void
@@ -365,6 +365,7 @@ export function useShowcaseState(
     wrapperPropsMap: state.wrapperPropsMap,
     presetMode: state.presetMode,
     instanceCount: state.instanceCount,
+    defaultPropValues: state.defaults?.propValues ?? {},
     selectComponent,
     setSearch,
     setPropValue,

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { getPref, setPref } from '../lib/preferences.js'
 import { buildComponentFixturesPlugin, resolveComponentFixtureItems } from '../lib/fixtures.js'
 import { loadMeta } from '../lib/load-meta.js'
 import { normalizePlugin, resolvePluginItems } from '../lib/plugins.js'
@@ -138,6 +139,45 @@ export function ShowcaseApp({
     },
     [syncUrl],
   )
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+
+      if (e.key === '/' && !isInput) {
+        e.preventDefault()
+        const input = document.querySelector<HTMLInputElement>('.jc-showcase input[type="text"]')
+        input?.focus()
+        return
+      }
+
+      if (e.key === 'Escape') {
+        // Blur search input on Escape
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        return
+      }
+
+      // Arrow up/down to navigate components (only when not in an input)
+      if (!isInput && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        const comps = state.filteredComponents
+        if (comps.length === 0) return
+        e.preventDefault()
+        const idx = comps.findIndex((c) => c.displayName === state.selectedName)
+        const next = e.key === 'ArrowDown'
+          ? Math.min(idx + 1, comps.length - 1)
+          : Math.max(idx - 1, 0)
+        state.selectComponent(comps[next].displayName)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [state.filteredComponents, state.selectedName, state.selectComponent])
 
   // Build context value for the provider
   const ctxValue = useMemo<ShowcaseContextValue>(
@@ -304,18 +344,27 @@ function ResizableLayout({
   activeViewport: (typeof VIEWPORTS)[number]
   theme: 'light' | 'dark'
 }) {
-  // Read everything from context instead of props
-  const { state, meta, resolvedItems, plugins, wrapperMetas, registry, wrapper } = useShowcaseContext()
+  // Read state from context — ShowcaseControls and ShowcasePreview
+  // now consume context directly, so only layout-level data is needed here.
+  const { state } = useShowcaseContext()
 
-  const [sidebarW, setSidebarW] = useState(SIDEBAR_MIN)
-  const [controlsW, setControlsW] = useState(CONTROLS_MIN)
+  const [sidebarW, setSidebarW] = useState(() => getPref('sidebarWidth') ?? SIDEBAR_MIN)
+  const [controlsW, setControlsW] = useState(() => getPref('controlsWidth') ?? CONTROLS_MIN)
 
   const handleSidebarDrag = useCallback((delta: number) => {
-    setSidebarW((w) => Math.max(SIDEBAR_MIN, w + delta))
+    setSidebarW((w) => {
+      const next = Math.max(SIDEBAR_MIN, w + delta)
+      setPref('sidebarWidth', next)
+      return next
+    })
   }, [])
 
   const handleControlsDrag = useCallback((delta: number) => {
-    setControlsW((w) => Math.max(CONTROLS_MIN, w - delta))
+    setControlsW((w) => {
+      const next = Math.max(CONTROLS_MIN, w - delta)
+      setPref('controlsWidth', next)
+      return next
+    })
   }, [])
 
   return (
@@ -353,21 +402,8 @@ function ResizableLayout({
         >
           {state.ready && state.selectedComponent ? (
             <ShowcasePreview
-              component={state.selectedComponent}
-              propValues={state.propValues}
-              childrenItems={state.childrenItems}
-              resolvedItems={resolvedItems}
-              plugins={plugins}
-              meta={meta}
-              fixtureOverrides={state.fixtureOverrides}
-              wrapperPropsMap={state.wrapperPropsMap}
-              registry={registry}
-              wrapper={wrapper}
               viewportWidth={activeViewport.width}
               theme={theme}
-              instanceCount={state.instanceCount}
-              onInstanceCountChange={state.setInstanceCount}
-              presetMode={state.presetMode}
             />
           ) : (
             <div
@@ -397,28 +433,7 @@ function ResizableLayout({
                 overflow: 'hidden',
               }}
             >
-              <ShowcaseControls
-                component={state.selectedComponent}
-                propValues={state.propValues}
-                childrenItems={state.childrenItems}
-                resolvedItems={resolvedItems}
-                plugins={plugins}
-                meta={meta}
-                fixtureOverrides={state.fixtureOverrides}
-                onPropChange={state.setPropValue}
-                onAddChildItem={state.addChildItem}
-                onRemoveChildItem={state.removeChildItem}
-                onUpdateChildItem={state.updateChildItem}
-                onFixturePropChange={state.setFixturePropValue}
-                onFixtureChildrenChange={state.setFixtureChildrenText}
-                wrapperMetas={wrapperMetas}
-                wrapperPropsMap={state.wrapperPropsMap}
-                onWrapperPropChange={state.setWrapperPropValue}
-                presetMode={state.presetMode}
-                examples={state.selectedComponent.examples ?? []}
-                onPresetModeChange={state.setPresetMode}
-                onReset={state.resetProps}
-              />
+              <ShowcaseControls />
             </aside>
           </>
         )}

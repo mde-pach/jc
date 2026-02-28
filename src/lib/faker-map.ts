@@ -43,7 +43,12 @@ export function resolveControlType(prop: JcPropMeta): JcControlType {
 
   if (prop.type.startsWith('{') || prop.type.startsWith('Array') || prop.type.startsWith('Record'))
     return 'json'
-  if (prop.type === 'string' || prop.type === 'enum') return 'text'
+  // Color props get a dedicated color picker
+  if (prop.type === 'string' || prop.type === 'enum') {
+    const name = prop.name.toLowerCase()
+    if (name === 'color' || name.endsWith('color') || name.endsWith('colour')) return 'color'
+    return 'text'
+  }
   return 'text'
 }
 
@@ -62,13 +67,12 @@ export function getArrayItemType(prop: JcPropMeta): {
   if (!prop.type.endsWith('[]')) return null
   const itemType = prop.type.slice(0, -2)
 
-  // Check if the item type is a component (icon, element, etc.)
+  // Check if the item type is a React component type
   // Structured object types (e.g. `{ label: string; content: ReactNode }`) are data, not components
   const isStructuredObject = itemType.startsWith('{') || itemType.startsWith('Array<{')
   const isComponent =
     !isStructuredObject &&
-    (/ReactNode|ReactElement|JSX\.Element|Element/.test(itemType) ||
-      !!(prop.rawType && /Icon|Component|Element/.test(prop.rawType)))
+    /ReactNode|ReactElement|JSX\.Element|ComponentType|FC\b|FunctionComponent/.test(itemType)
 
   // Structured fields are pre-extracted at CLI time via the TypeScript type checker
   const structuredFields = prop.structuredFields
@@ -76,8 +80,22 @@ export function getArrayItemType(prop: JcPropMeta): {
   return { itemType, isComponent, structuredFields }
 }
 
-/** Generate a smart default value for a prop based on name + type heuristics */
-export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
+/**
+ * Generate a smart default value for a prop based on name + type heuristics.
+ * When `customResolver` is provided (from FakerStrategy), it runs first —
+ * a non-undefined return value short-circuits built-in heuristics.
+ */
+export function generateFakeValue(
+  propName: string,
+  prop: JcPropMeta,
+  customResolver?: (propName: string, prop: JcPropMeta) => unknown,
+): unknown {
+  // Try custom resolver first (user-defined FakerStrategy)
+  if (customResolver) {
+    const custom = customResolver(propName, prop)
+    if (custom !== undefined) return custom
+  }
+
   const name = propName.toLowerCase()
 
   // Component-type props are resolved via the fixture system — no default here
@@ -146,7 +164,7 @@ export function generateFakeValue(propName: string, prop: JcPropMeta): unknown {
               ...(field.values ? { values: field.values } : {}),
               ...(field.fields ? { structuredFields: field.fields } : {}),
             }
-            obj[field.name] = generateFakeValue(field.name, synth)
+            obj[field.name] = generateFakeValue(field.name, synth, customResolver)
           }
         }
         return obj
@@ -257,6 +275,7 @@ export function generateVariedInstances(
   userProps: Record<string, unknown>,
   userChildren: string,
   count: number,
+  fakerResolver?: (propName: string, prop: JcPropMeta) => unknown,
 ): Array<{ propValues: Record<string, unknown>; childrenText: string }> {
   if (count <= 1) return [{ propValues: userProps, childrenText: userChildren }]
 
@@ -269,7 +288,7 @@ export function generateVariedInstances(
 
   for (let i = 1; i < count; i++) {
     faker.seed(Math.abs(hash + i * 7919))
-    const varied = generateDefaults(comp, plugins, resolvedItems)
+    const varied = generateDefaults(comp, plugins, resolvedItems, fakerResolver)
 
     // Overlay: preserve non-string user edits (booleans, numbers, selects, fixtures)
     for (const [key, userVal] of Object.entries(userProps)) {
@@ -297,25 +316,30 @@ export function generateVariedInstances(
  * Generate smart default prop values for a component.
  * Uses faker heuristics for primitive props; for component-type props,
  * picks the first matching fixture key if fixtures are available.
+ *
+ * When `fakerResolver` is provided (from `createFakerResolver` with custom strategies),
+ * it runs before the built-in heuristics for each prop.
  */
 export function generateDefaults(
   comp: JcComponentMeta,
   plugins: JcPlugin[],
   resolvedItems: JcResolvedPluginItem[],
+  fakerResolver?: (propName: string, prop: JcPropMeta) => unknown,
 ): Record<string, unknown> {
   const values: Record<string, unknown> = {}
   for (const [name, prop] of Object.entries(comp.props)) {
-    const base = generateFakeValue(name, prop)
+    const base = generateFakeValue(name, prop, fakerResolver)
     if (base === undefined && prop.componentKind && resolvedItems.length > 0 && prop.required) {
       // Check if a non-fallback plugin matches this prop — if so, pick its first item as default.
       // Fallback plugins (priority < 0, like component fixtures) don't auto-populate defaults.
       const matchingPlugin = getPluginForProp(prop, plugins)
       if (matchingPlugin && (matchingPlugin.priority ?? 0) >= 0) {
         values[name] = getDefaultItemKey(prop, plugins, resolvedItems)
-      } else {
-        // No plugin match or fallback plugin → default to text
+      } else if (prop.componentKind === 'node') {
+        // No plugin match — text is valid ReactNode but not a valid ComponentType
         values[name] = generateFakeChildren(comp.displayName)
       }
+      // element-kind stays undefined → resolveProps will use a placeholder component
     } else {
       values[name] = base
     }

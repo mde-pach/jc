@@ -11,6 +11,7 @@ import type {
   JcControlType,
   JcMeta,
   JcPlugin,
+  JcPluginPickerProps,
   JcPropMeta,
   JcResolvedPluginItem,
 } from '../../types.js'
@@ -35,8 +36,9 @@ interface ShowcaseFieldProps {
   /** Per-slot fixture overrides for component fixture props */
   fixtureOverrides?: Record<string, FixtureOverride>
   /** Custom picker from the matching plugin (replaces default dropdown) */
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
+  /** Suggested built-in plugin when no plugin matches */
+  pluginSuggestion?: { name: string; importPath: string; importName: string } | null
   onFixturePropChange?: (slotKey: string, propName: string, value: unknown) => void
   onFixtureChildrenChange?: (slotKey: string, text: string) => void
   onChange: (value: unknown) => void
@@ -55,6 +57,7 @@ export function ShowcaseField({
   meta,
   fixtureOverrides,
   Picker,
+  pluginSuggestion,
   onFixturePropChange,
   onFixtureChildrenChange,
   onChange,
@@ -64,20 +67,27 @@ export function ShowcaseField({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.7 }}>{label}</span>
-          {controlType === 'component' && componentKind && (
+          {controlType === 'component' && componentKind && propMeta && (
             <span
+              title={
+                pluginSuggestion
+                  ? `No plugin loaded \u2014 add ${pluginSuggestion.importName} from ${pluginSuggestion.importPath}`
+                  : propMeta.type
+              }
               style={{
                 fontSize: '8px',
                 fontWeight: 600,
-                textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 padding: '1px 4px',
                 borderRadius: '3px',
-                backgroundColor: 'color-mix(in srgb, var(--jc-accent) 15%, transparent)',
-                color: 'var(--jc-accent)',
+                backgroundColor: pluginSuggestion
+                  ? 'color-mix(in srgb, #f59e0b 15%, transparent)'
+                  : 'color-mix(in srgb, var(--jc-accent) 15%, transparent)',
+                color: pluginSuggestion ? '#f59e0b' : 'var(--jc-accent)',
+                cursor: 'help',
               }}
             >
-              {componentKind}
+              {propMeta.type}
             </span>
           )}
           {(controlType === 'array' || controlType === 'object') && propMeta && (
@@ -146,6 +156,33 @@ export function ShowcaseField({
           onChange={(e) => onChange(e.target.value)}
           style={inputStyle}
         />
+      )}
+
+      {controlType === 'color' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="color"
+            value={String(value ?? '#000000')}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              width: '28px',
+              height: '28px',
+              padding: '2px',
+              border: '1px solid var(--jc-border)',
+              borderRadius: '4px',
+              backgroundColor: 'transparent',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          />
+          <input
+            type="text"
+            value={String(value ?? '')}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="#000000"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+        </div>
       )}
 
       {controlType === 'number' && (
@@ -257,8 +294,9 @@ export function ShowcaseField({
       )}
 
       {controlType === 'readonly' && (
-        <span style={{ fontSize: '11px', opacity: 0.4, fontStyle: 'italic' }}>
-          Function — not editable
+        <span style={{ fontSize: '11px', opacity: 0.4, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#34d399', flexShrink: 0 }} />
+          Event logged
         </span>
       )}
     </div>

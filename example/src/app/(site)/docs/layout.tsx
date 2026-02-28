@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 const sections = [
   { href: '/docs/getting-started', label: 'Getting Started' },
   { href: '/docs/configuration', label: 'Configuration' },
-  { href: '/docs/fixtures', label: 'Fixtures' },
+  { href: '/docs/fixtures', label: 'Plugins' },
   { href: '/docs/api', label: 'API Reference' },
   { href: '/docs/frameworks', label: 'Frameworks' },
 ]

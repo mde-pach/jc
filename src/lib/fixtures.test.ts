@@ -21,7 +21,7 @@ import {
 
 const mockPlugin: JcPlugin = {
   name: 'test',
-  match: { kinds: ['icon'] },
+  match: { types: ['LucideIcon'] },
   items: [
     { key: 'star', label: 'Star', value: 'star-value' },
     { key: 'heart', label: 'Heart', value: 'heart-value' },
@@ -117,9 +117,9 @@ describe('getItemsForProp', () => {
   })
 
   it('matches by componentKind', () => {
-    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'element' as const }
     const result = getItemsForProp(prop, plugins, resolved)
-    // mockPlugin matches 'icon' kind → 3 items
+    // mockPlugin matches 'LucideIcon' type → 3 items
     expect(result).toHaveLength(3)
     expect(result.every((f) => f.pluginName === 'test')).toBe(true)
   })
@@ -132,12 +132,12 @@ describe('getDefaultItemKey', () => {
   const resolved = resolvePluginItems(plugins)
 
   it('returns first matching item key', () => {
-    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'element' as const }
     expect(getDefaultItemKey(prop, plugins, resolved)).toBe('test/star')
   })
 
   it('returns undefined for empty items', () => {
-    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'icon' as const }
+    const prop = { name: 'icon', type: 'LucideIcon', required: false, description: '', isChildren: false, componentKind: 'element' as const }
     expect(getDefaultItemKey(prop, [], [])).toBeUndefined()
   })
 })

@@ -63,7 +63,7 @@ describe('extract (integration)', () => {
     const meta = extractMeta()
     const button = meta.components.find((c) => c.displayName === 'Button')!
     expect(button.props.icon).toBeDefined()
-    expect(button.props.icon.componentKind).toBe('icon')
+    expect(button.props.icon.componentKind).toBe('element')
   })
 
   it('filters out built-in React props (ref, key, aria-, data-, event handlers)', () => {

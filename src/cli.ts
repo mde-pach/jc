@@ -97,29 +97,49 @@ function runExtract(projectRoot: string, config: JcConfig, options: RunOptions =
 }
 
 function startWatch(projectRoot: string, config: JcConfig, options: RunOptions): void {
-  // Resolve the component directory from the glob pattern
-  const globBase = config.componentGlob.split('*')[0].replace(/\/$/, '') || '.'
-  const watchDir = resolve(projectRoot, globBase)
+  // Collect all unique base directories from componentGlobs (or single componentGlob)
+  const globs = config.componentGlobs?.length
+    ? config.componentGlobs
+    : [config.componentGlob]
 
-  if (!existsSync(watchDir)) {
-    console.error(`[jc] Watch directory does not exist: ${watchDir}`)
+  const baseDirs = [...new Set(
+    globs.map((g) => g.split('*')[0].replace(/\/$/, '') || '.'),
+  )]
+
+  const watchDirs = baseDirs
+    .map((dir) => resolve(projectRoot, dir))
+    .filter((dir) => {
+      if (!existsSync(dir)) {
+        console.warn(`[jc] Watch directory does not exist: ${dir}`)
+        return false
+      }
+      return true
+    })
+
+  if (watchDirs.length === 0) {
+    console.error('[jc] No valid watch directories found')
     process.exit(1)
   }
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-  console.log(`[jc] Watching ${globBase} for changes...`)
+  const dirLabels = baseDirs.join(', ')
+  console.log(`[jc] Watching ${dirLabels} for changes...`)
 
-  watch(watchDir, { recursive: true }, (_event, filename) => {
-    if (!filename || !filename.endsWith('.tsx')) return
+  for (const watchDir of watchDirs) {
+    watch(watchDir, { recursive: true }, (_event, filename) => {
+      if (!filename || !(filename.endsWith('.tsx') || filename.endsWith('.ts'))) return
+      // Skip test files and declaration files
+      if (filename.endsWith('.test.ts') || filename.endsWith('.test.tsx') || filename.endsWith('.d.ts')) return
 
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      const time = new Date().toLocaleTimeString()
-      console.log(`\n[jc] ${time} — change detected: ${filename}`)
-      runExtract(projectRoot, config, options)
-    }, 200)
-  })
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        const time = new Date().toLocaleTimeString()
+        console.log(`\n[jc] ${time} — change detected: ${filename}`)
+        runExtract(projectRoot, config, options)
+      }, 200)
+    })
+  }
 }
 
 async function main() {

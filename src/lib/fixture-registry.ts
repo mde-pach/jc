@@ -34,10 +34,10 @@ export class FixtureRegistry {
   }
 
   /** Resolve a plugin item value — render or return constructor */
-  renderValue(qualifiedKey: string | null | undefined, asConstructor?: boolean): unknown {
+  renderValue(qualifiedKey: string | null | undefined, returnConstructor?: boolean): unknown {
     const item = this.resolve(qualifiedKey)
     if (!item) return undefined
-    if (asConstructor) return item.getValue()
+    if (returnConstructor) return item.getValue()
     return item.render()
   }
 

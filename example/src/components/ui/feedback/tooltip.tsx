@@ -6,8 +6,12 @@ import type { ReactNode } from 'react'
 /**
  * A tooltip that displays on hover, built on Radix UI.
  *
- * @example <Tooltip content="Copy to clipboard" side="top">Hover me</Tooltip>
- * @example <Tooltip content="More info" side="right" delayDuration={0}>Help</Tooltip>
+ * @example <Tooltip content="Copy to clipboard" side="top">
+ *   <button>Hover me</button>
+ * </Tooltip>
+ * @example <Tooltip content="More info" side="right" delayDuration={0}>
+ *   <Plus />
+ * </Tooltip>
  */
 export interface TooltipProps {
   /** The trigger element */

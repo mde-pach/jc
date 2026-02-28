@@ -19,6 +19,14 @@
     "./next": {
       "import": "./dist/next.js",
       "types": "./dist/next.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "types": "./dist/react.d.ts"
+    },
+    "./plugins/lucide": {
+      "import": "./dist/plugins/lucide.js",
+      "types": "./dist/plugins/lucide.d.ts"
     }
   },
   "bin": {
@@ -42,17 +50,29 @@
     "lint": "biome check src",
     "lint:fix": "biome check --write src",
     "format": "biome format --write src",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run type-check && bun run test && bun run build"
   },
   "peerDependencies": {
     "react": ">=18",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "lucide-react": ">=0.300.0",
+    "typescript": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "lucide-react": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@faker-js/faker": "^10.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.2.3",
@@ -69,9 +89,16 @@
     "storybook-alternative",
     "typescript",
     "props-introspection",
-    "react"
+    "react",
+    "component-library",
+    "playground",
+    "zero-config",
+    "documentation",
+    "developer-tools"
   ],
   "license": "MIT",
+  "author": "Maxime de Pachtere",
+  "homepage": "https://github.com/mde-pach/jc#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/mde-pach/jc.git"

@@ -65,15 +65,6 @@ export interface SerializedState {
   children?: Array<{ t: string; v: string }> // childrenItems (compact format)
   wrappers?: Record<string, Record<string, unknown>> // wrapperPropsMap (non-default only)
   fixtureOverrides?: Record<string, { p: Record<string, unknown>; c: string }>
-
-  // ── Legacy v1 fields (read-only, for backward compat) ──
-  p?: Record<string, unknown>
-  ci?: Array<{ t: string; v: string }>
-  ct?: string // childrenText (legacy)
-  cm?: 'fixture' // childrenMode (legacy)
-  cf?: string // childrenFixtureKey (legacy)
-  w?: Record<string, Record<string, unknown>>
-  fo?: Record<string, { p: Record<string, unknown>; c: string }>
 }
 
 export function serializeState(
@@ -141,51 +132,28 @@ export function serializeState(
   }
 }
 
-/** Convert serialized children fields to ChildItem[], handling all format versions */
+/** Convert serialized children fields to ChildItem[] */
 export function deserializeChildrenItems(saved: SerializedState): ChildItem[] | null {
-  // V2 format
   if (saved.children) {
     return saved.children.map((item) => ({
       type: item.t === 'fixture' ? 'fixture' : 'text',
       value: item.v,
     }))
   }
-  // V1 format
-  if (saved.ci) {
-    return saved.ci.map((item) => ({
-      type: item.t === 'fixture' ? 'fixture' : 'text',
-      value: item.v,
-    }))
-  }
-  // Legacy format (v0)
-  if (saved.cm === 'fixture' && saved.cf) {
-    return [{ type: 'fixture', value: saved.cf }]
-  }
-  if (saved.ct !== undefined) {
-    return [{ type: 'text', value: saved.ct }]
-  }
   return null
 }
 
 /**
  * Normalize a deserialized state to v2 field names.
- * Handles backward compat with v1 and legacy formats.
  */
 export function normalizeSerializedState(raw: SerializedState): SerializedState {
-  // Already v2+
   if (raw._v && raw._v >= 2) return raw
-
-  // Migrate v1 short field names to v2 full names
   return {
     _v: CURRENT_VERSION,
-    props: raw.props ?? raw.p,
-    children: raw.children ?? raw.ci,
-    wrappers: raw.wrappers ?? raw.w,
-    fixtureOverrides: raw.fixtureOverrides ?? raw.fo,
-    // Carry legacy fields for deserializeChildrenItems
-    ct: raw.ct,
-    cm: raw.cm,
-    cf: raw.cf,
+    props: raw.props,
+    children: raw.children,
+    wrappers: raw.wrappers,
+    fixtureOverrides: raw.fixtureOverrides,
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-24T23:39:13.451Z",
+  "generatedAt": "2026-02-27T08:42:34.773Z",
   "componentDir": "src/components/ui/**/*.tsx",
   "components": [
     {
@@ -11,10 +11,13 @@
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Leading icon",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         },
         "variant": {
           "name": "variant",
@@ -99,6 +102,12 @@
             "shortcut": "Cmd+S"
           },
           "childrenText": "Save",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Save"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -109,6 +118,12 @@
             "loading": "true"
           },
           "childrenText": "Deleting...",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Deleting..."
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -130,7 +145,15 @@
           "required": true,
           "description": "",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
+        },
+        "onClick": {
+          "name": "onClick",
+          "type": "(() => void)",
+          "rawType": "enum",
+          "required": false,
+          "description": "",
+          "isChildren": false
         },
         "rounded": {
           "name": "rounded",
@@ -155,7 +178,7 @@
       "tags": {
         "example": [
           "<IconButton icon={Heart}>Like</IconButton>",
-          "<IconButton icon={Settings} rounded>Settings</IconButton>",
+          "<IconButton icon={Settings} onClick={() => alert('Settings')} rounded>Settings</IconButton>",
           "<IconButton icon={Trash2} disabled>Delete</IconButton>"
         ]
       },
@@ -166,15 +189,28 @@
             "icon": "Heart"
           },
           "childrenText": "Like",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Like"
+            }
+          ],
           "wrapperProps": {}
         },
         {
           "index": 1,
           "propValues": {
             "icon": "Settings",
+            "onClick": "() => alert('Settings')",
             "rounded": "true"
           },
           "childrenText": "Settings",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Settings"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -184,6 +220,12 @@
             "disabled": "true"
           },
           "childrenText": "Delete",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Delete"
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -278,6 +320,12 @@
             "title": "How do I install jc?"
           },
           "childrenText": "Run bun add jc.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Run bun add jc."
+            }
+          ],
           "wrapperProps": {
             "Accordion": {
               "type": "single",
@@ -292,6 +340,12 @@
             "title": "Is jc free?"
           },
           "childrenText": "Yes, MIT licensed.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Yes, MIT licensed."
+            }
+          ],
           "wrapperProps": {
             "Accordion": {
               "type": "multiple"
@@ -420,10 +474,13 @@
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Optional leading icon",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         }
       },
       "acceptsChildren": true,
@@ -445,6 +502,12 @@
             "icon": "CheckCircle"
           },
           "childrenText": "Active",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Active"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -454,6 +517,12 @@
             "pill": "true"
           },
           "childrenText": "Expired",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Expired"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -463,6 +532,12 @@
             "icon": "AlertTriangle"
           },
           "childrenText": "Pending",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Pending"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -471,6 +546,12 @@
             "variant": "outline"
           },
           "childrenText": "Draft",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Draft"
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -553,6 +634,12 @@
             "description": "A quick summary of your project"
           },
           "childrenText": "Card body content goes here.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Card body content goes here."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -563,6 +650,12 @@
             "padding": "lg"
           },
           "childrenText": "Elevated card with large padding.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Elevated card with large padding."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -571,6 +664,12 @@
             "padding": "none"
           },
           "childrenText": "Borderless content area.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Borderless content area."
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -966,30 +1065,51 @@
           "description": "Custom metadata key-value pairs",
           "isChildren": false
         },
+        "onClick": {
+          "name": "onClick",
+          "type": "(() => void)",
+          "rawType": "enum",
+          "required": false,
+          "description": "Called when the profile card is clicked",
+          "isChildren": false
+        },
+        "onMessage": {
+          "name": "onMessage",
+          "type": "((message: string) => void)",
+          "rawType": "enum",
+          "required": false,
+          "description": "Called when the user clicks the message button",
+          "isChildren": false
+        },
         "icon": {
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Leading icon for the card",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         },
         "badge": {
           "name": "badge",
-          "type": "any",
-          "rawType": "any",
+          "type": "ReactNode",
+          "rawType": "enum",
           "required": false,
           "description": "Custom badge element",
-          "isChildren": false
+          "isChildren": false,
+          "componentKind": "node"
         },
         "footer": {
           "name": "footer",
-          "type": "any",
-          "rawType": "any",
+          "type": "ReactNode",
+          "rawType": "enum",
           "required": false,
           "description": "Custom footer content",
-          "isChildren": false
+          "isChildren": false,
+          "componentKind": "node"
         }
       },
       "acceptsChildren": false,
@@ -1090,10 +1210,13 @@
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Decorative icon",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         },
         "tags": {
           "name": "tags",
@@ -1197,10 +1320,13 @@
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Override the default icon",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         }
       },
       "acceptsChildren": true,
@@ -1222,6 +1348,12 @@
             "title": "Heads up"
           },
           "childrenText": "This feature is in beta.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "This feature is in beta."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -1231,6 +1363,12 @@
             "title": "Saved"
           },
           "childrenText": "Your changes have been applied.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Your changes have been applied."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -1240,6 +1378,12 @@
             "dismissible": "true"
           },
           "childrenText": "Storage is almost full.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Storage is almost full."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -1249,6 +1393,12 @@
             "icon": "ShieldAlert"
           },
           "childrenText": "Access denied. Contact your admin.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Access denied. Contact your admin."
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -1303,7 +1453,7 @@
       "exportType": "named",
       "tags": {
         "example": [
-          "<Dialog title=\"Confirm action\" description=\"Are you sure you want to proceed?\" defaultOpen>Dialog body content here.</Dialog>",
+          "<Dialog title=\"Confirm action\" description=\"Are you sure you want to proceed?\" trigger={\"hello\"} defaultOpen>Dialog body content here.</Dialog>",
           "<Dialog title=\"New project\" defaultOpen>Fill in the details to create a project.</Dialog>"
         ]
       },
@@ -1313,9 +1463,16 @@
           "propValues": {
             "title": "Confirm action",
             "description": "Are you sure you want to proceed?",
+            "trigger": "\"hello\"",
             "defaultOpen": "true"
           },
           "childrenText": "Dialog body content here.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Dialog body content here."
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -1325,6 +1482,12 @@
             "defaultOpen": "true"
           },
           "childrenText": "Fill in the details to create a project.",
+          "parsedChildren": [
+            {
+              "type": "text",
+              "value": "Fill in the details to create a project."
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -1377,8 +1540,8 @@
       "exportType": "named",
       "tags": {
         "example": [
-          "<Tooltip content=\"Copy to clipboard\" side=\"top\">Hover me</Tooltip>",
-          "<Tooltip content=\"More info\" side=\"right\" delayDuration={0}>Help</Tooltip>"
+          "<Tooltip content=\"Copy to clipboard\" side=\"top\">\n<button>Hover me</button>\n</Tooltip>",
+          "<Tooltip content=\"More info\" side=\"right\" delayDuration={0}>\n<Plus />\n</Tooltip>"
         ]
       },
       "examples": [
@@ -1389,6 +1552,13 @@
             "side": "top"
           },
           "childrenText": "Hover me",
+          "parsedChildren": [
+            {
+              "type": "element",
+              "value": "button",
+              "innerText": "Hover me"
+            }
+          ],
           "wrapperProps": {}
         },
         {
@@ -1398,7 +1568,13 @@
             "side": "right",
             "delayDuration": "0"
           },
-          "childrenText": "Help",
+          "childrenText": "Plus",
+          "parsedChildren": [
+            {
+              "type": "element",
+              "value": "Plus"
+            }
+          ],
           "wrapperProps": {}
         }
       ],
@@ -1484,10 +1660,13 @@
           "name": "leadingIcon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Optional icon displayed inside the input",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         }
       },
       "acceptsChildren": false,
@@ -1658,10 +1837,13 @@
           "name": "icon",
           "type": "LucideIcon",
           "rawType": "enum",
+          "values": [
+            "LucideIcon"
+          ],
           "required": false,
           "description": "Decorative icon",
           "isChildren": false,
-          "componentKind": "icon"
+          "componentKind": "element"
         },
         "title": {
           "name": "title",

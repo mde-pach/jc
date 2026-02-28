@@ -2,7 +2,7 @@
 
 import meta from '@/jc/generated/meta.json'
 import { registry } from '@/jc/generated/registry'
-import { lucidePlugin } from '@/app/showcase/fixtures'
+import { lucidePlugin } from 'jc/plugins/lucide'
 import { ShowcaseApp, loadMeta } from 'jc'
 import type { JcMeta } from 'jc'
 import { ShowcaseControls, useResolvedComponent } from 'jc/advanced'

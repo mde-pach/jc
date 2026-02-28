@@ -65,6 +65,30 @@ function extractStringLiteralValues(t: ts.Type): string[] | undefined {
 }
 
 /**
+ * Check if a type (possibly structural) has call or construct signatures
+ * that return React elements. This catches types like ForwardRefExoticComponent
+ * which resolve to `{ propTypes?: ...; $$typeof: symbol }` but are callable.
+ */
+function hasCallableSignatures(checker: ts.TypeChecker, propType: ts.Type): boolean {
+  // Unwrap union (strip null/undefined)
+  const typesToCheck = propType.isUnion()
+    ? propType.types.filter((t) => !isNullishType(t))
+    : [propType]
+
+  for (const t of typesToCheck) {
+    for (const sig of t.getCallSignatures()) {
+      const retStr = checker.typeToString(checker.getReturnTypeOfSignature(sig))
+      if (/Element|ReactElement|ReactNode/.test(retStr)) return true
+    }
+    for (const sig of t.getConstructSignatures()) {
+      const retStr = checker.typeToString(checker.getReturnTypeOfSignature(sig))
+      if (/Component|Element/.test(retStr)) return true
+    }
+  }
+  return false
+}
+
+/**
  * Detect component kind using the resolved type string from the type checker.
  *
  * This is fundamentally more accurate than regex on react-docgen-typescript's
@@ -81,16 +105,9 @@ function detectComponentKindFromType(
   if (aliasName === 'ReactNode') return 'node'
   if (aliasName === 'ReactElement') return 'element'
   if (aliasName === 'ComponentType' || aliasName === 'FC' || aliasName === 'FunctionComponent') {
-    // Distinguish icon constructors from wrapper/slot components:
-    // If the type argument has a 'children' property, it's likely a wrapper (node/element), not an icon.
-    const typeArgs = propType.aliasTypeArguments
-    if (typeArgs && typeArgs.length > 0) {
-      const propsArg = typeArgs[0]
-      if (propsArg.getProperty('children')) {
-        return 'element'
-      }
-    }
-    return 'icon'
+    // Component constructor types are 'element' — the plugin system determines
+    // if a specific type (e.g. LucideIcon) should be treated differently.
+    return 'element'
   }
 
   // Also check the top-level type string for non-alias cases
@@ -112,11 +129,7 @@ function detectComponentKindFromType(
     // Check for component constructors (icon kind)
     // ComponentType, FC, FunctionComponent, ComponentClass all have call/construct signatures
     // that return ReactElement. Check both the type string and actual signatures.
-    if (
-      /\bComponentType\b|\bFC\b|\bFunctionComponent\b|\bComponentClass\b|\bLucideIcon\b|\bIconType\b/.test(
-        typeStr,
-      )
-    ) {
+    if (/\bComponentType\b|\bFC\b|\bFunctionComponent\b|\bComponentClass\b/.test(typeStr)) {
       hasCallableComponent = true
       continue
     }
@@ -159,8 +172,8 @@ function detectComponentKindFromType(
     }
   }
 
-  // Priority: icon > element > node
-  if (hasCallableComponent) return 'icon'
+  // Priority: element > node (callable components are 'element' — plugins determine specifics)
+  if (hasCallableComponent) return 'element'
   if (hasReactElement) return 'element'
   if (hasReactNode) return 'node'
 
@@ -168,7 +181,7 @@ function detectComponentKindFromType(
   // This catches cases where the checker renders the type as e.g. "ReactNode"
   if (!propType.isUnion()) {
     const fullStr = checker.typeToString(propType, undefined, ts.TypeFormatFlags.NoTruncation)
-    if (/\bComponentType\b|\bFC\b|\bLucideIcon\b|\bIconType\b/.test(fullStr)) return 'icon'
+    if (/\bComponentType\b|\bFC\b/.test(fullStr)) return 'element'
     if (/\bReactElement\b|\bJSX\.Element\b/.test(fullStr)) return 'element'
     if (/\bReactNode\b/.test(fullStr)) return 'node'
   }
@@ -190,8 +203,6 @@ const KEEP_AS_NAME = new Set([
   'ReactNode',
   'ReactElement',
   'JSX.Element',
-  'LucideIcon',
-  'IconType',
   'ComponentType',
   'FC',
   'FunctionComponent',
@@ -308,7 +319,7 @@ function unwrapNullish(t: ts.Type): ts.Type {
     const nonNullish = t.types.filter((u) => !isNullishType(u))
     if (nonNullish.length === 0) return t
     if (nonNullish.length === 1) return nonNullish[0]
-    // Multiple non-nullish types — return the first for backward compat
+    // Multiple non-nullish types — return the first
     // (expandTypeToInline, getArrayElementType expect a single type)
     return nonNullish[0]
   }
@@ -379,8 +390,7 @@ function extractStructuredFields(
 
     // Detect component types
     const componentKind = detectComponentKindFromType(checker, unwrapNullish(propType))
-    const isComponent =
-      componentKind === 'icon' || componentKind === 'node' || componentKind === 'element'
+    const isComponent = componentKind === 'node' || componentKind === 'element'
 
     // Extract string literal union values for enum-like fields
     // Note: don't unwrapNullish here — extractStringLiteralValues already skips nullish members,
@@ -398,9 +408,7 @@ function extractStructuredFields(
       type: cleaned,
       optional,
       isComponent,
-      ...(isComponent && componentKind
-        ? { componentKind: componentKind === 'element' ? ('node' as const) : componentKind }
-        : {}),
+      ...(isComponent && componentKind ? { componentKind } : {}),
       ...(values ? { values } : {}),
       ...(nestedFields ? { fields: nestedFields } : {}),
     })
@@ -509,6 +517,9 @@ function analyzePropsType(checker: ts.TypeChecker, propsType: ts.Type): AstCompo
     // Component kind detection — skip for structured types (object literals,
     // arrays of objects, named interfaces) where ReactNode may appear as a
     // nested field type rather than being the prop's own component kind.
+    // BUT: check for call/construct signatures first — types like
+    // ForwardRefExoticComponent resolve to structural forms but ARE callable
+    // component types (e.g. LucideIcon).
     const typeStr = checker.typeToString(propType, undefined, ts.TypeFormatFlags.NoTruncation)
     const cleanedTypeStr = typeStr
       .replace(/\s*\|\s*null/g, '')
@@ -520,25 +531,39 @@ function analyzePropsType(checker: ts.TypeChecker, propsType: ts.Type): AstCompo
       /\{[^}]*\}\[\]/.test(typeStr) ||
       isExpandableNamedType(cleanedTypeStr) ||
       (cleanedTypeStr.endsWith('[]') && isExpandableNamedType(cleanedTypeStr.slice(0, -2)))
-    if (!isStructuredProp) {
-      analysis.componentKind = detectComponentKindFromType(checker, propType)
-    }
 
-    // Simplified type string
-    analysis.simplifiedType = simplifyTypeString(checker, propType)
-
-    // Extract structured fields for object and array-of-objects props
     if (isStructuredProp) {
-      // Check if it's an array of objects
-      const elemType = getArrayElementType(checker, propType)
-      if (elemType) {
-        // Array prop — extract fields from element type
-        const fields = extractStructuredFields(checker, elemType)
-        if (fields) analysis.structuredFields = fields
+      // Even for structural types, check if the type has call/construct signatures
+      // (e.g. ForwardRefExoticComponent resolves to { propTypes?: ...; $$typeof: ... }
+      // but still has callable signatures returning ReactElement).
+      const hasCallable = hasCallableSignatures(checker, propType)
+      if (hasCallable) {
+        analysis.componentKind = 'element'
+        // Preserve the alias name (e.g. "LucideIcon") over the structural form.
+        // propType.aliasSymbol may be undefined when TS resolves through a type alias,
+        // but cleanedTypeStr still holds the readable name from typeToString.
+        const aliasName = propType.aliasSymbol?.getName()
+        analysis.simplifiedType = aliasName ?? cleanedTypeStr
       } else {
-        // Standalone object — extract fields directly
-        const fields = extractStructuredFields(checker, propType)
-        if (fields) analysis.structuredFields = fields
+        // True structured prop — extract fields
+        analysis.simplifiedType = simplifyTypeString(checker, propType)
+        const elemType = getArrayElementType(checker, propType)
+        if (elemType) {
+          const fields = extractStructuredFields(checker, elemType)
+          if (fields) analysis.structuredFields = fields
+        } else {
+          const fields = extractStructuredFields(checker, propType)
+          if (fields) analysis.structuredFields = fields
+        }
+      }
+    } else {
+      analysis.componentKind = detectComponentKindFromType(checker, propType)
+      // For component types, prefer the alias name over the structural form
+      if (analysis.componentKind) {
+        const aliasName = propType.aliasSymbol?.getName()
+        analysis.simplifiedType = aliasName ?? simplifyTypeString(checker, propType)
+      } else {
+        analysis.simplifiedType = simplifyTypeString(checker, propType)
       }
     }
 

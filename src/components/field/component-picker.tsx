@@ -8,7 +8,8 @@
  * (e.g. GridPicker) or their own custom UI.
  */
 
-import type { JcResolvedPluginItem } from '../../types.js'
+import type { JcPluginPickerProps, JcResolvedPluginItem } from '../../types.js'
+import { ErrorBoundary } from '../error-boundary.js'
 import { inputStyle } from './styles.js'
 
 export function ComponentPicker({
@@ -22,8 +23,7 @@ export function ComponentPicker({
   resolvedItems: JcResolvedPluginItem[]
   required: boolean
   onChange: (key: string) => void
-  // biome-ignore lint/suspicious/noExplicitAny: plugin picker components are user-defined with varying prop shapes
-  Picker?: React.ComponentType<any>
+  Picker?: React.ComponentType<JcPluginPickerProps>
 }) {
   // No fixtures available — text input fallback
   if (resolvedItems.length === 0) {
@@ -38,9 +38,13 @@ export function ComponentPicker({
     )
   }
 
-  // Plugin provides its own picker — delegate fully
+  // Plugin provides its own picker — delegate fully, wrapped in ErrorBoundary
   if (Picker) {
-    return <Picker items={resolvedItems} value={value} required={required} onChange={onChange} />
+    return (
+      <ErrorBoundary componentName="Picker">
+        <Picker items={resolvedItems} value={value} required={required} onChange={onChange} />
+      </ErrorBoundary>
+    )
   }
 
   // Default fallback: simple dropdown for all kinds

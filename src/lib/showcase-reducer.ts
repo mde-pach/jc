@@ -430,7 +430,15 @@ export function computePresetDefaults(
       const byLabel = resolvedItems.find(
         (f) => f.label === strVal || f.label.toLowerCase() === strVal.toLowerCase(),
       )
-      base.propValues[key] = byLabel ? byLabel.qualifiedKey : strVal
+      if (byLabel) {
+        base.propValues[key] = byLabel.qualifiedKey
+      } else {
+        // Try component fixtures fallback ('components/Name')
+        const asFixture = resolvedItems.find(
+          (f) => f.pluginName === 'components' && f.label === strVal,
+        )
+        base.propValues[key] = asFixture ? asFixture.qualifiedKey : strVal
+      }
     } else if (propMeta.type.endsWith('[]')) {
       const parsed = tryParseJsLiteral(strVal)
       if (Array.isArray(parsed)) {
@@ -451,7 +459,41 @@ export function computePresetDefaults(
     }
   }
 
-  if (preset.childrenText) {
+  // Resolve children: prefer structured parsedChildren, fall back to childrenText
+  if (preset.parsedChildren && preset.parsedChildren.length > 0) {
+    base.childrenItems = preset.parsedChildren.map((child): ChildItem => {
+      if (child.type === 'element') {
+        const isPascalCase = child.value[0] === child.value[0].toUpperCase() && child.value[0] !== child.value[0].toLowerCase()
+        if (isPascalCase) {
+          // PascalCase tag = component → try as fixture reference
+          const byLabel = resolvedItems.find(
+            (f) => f.label === child.value || f.label.toLowerCase() === child.value.toLowerCase(),
+          )
+          if (byLabel) return { type: 'fixture', value: byLabel.qualifiedKey }
+          // Try component fixtures
+          const asFixture = resolvedItems.find(
+            (f) => f.pluginName === 'components' && f.label === child.value,
+          )
+          if (asFixture) return { type: 'fixture', value: asFixture.qualifiedKey }
+        }
+        // Lowercase tag = HTML element → preserve as element ChildItem
+        if (!isPascalCase) {
+          const elementChildren: ChildItem[] = child.innerText
+            ? [{ type: 'text', value: child.innerText }]
+            : []
+          return {
+            type: 'element',
+            value: child.value,
+            ...(child.props && Object.keys(child.props).length > 0 ? { elementProps: child.props } : {}),
+            ...(elementChildren.length > 0 ? { elementChildren } : {}),
+          }
+        }
+        // Unresolved PascalCase component → fall back to text
+        return { type: 'text', value: child.innerText || child.value }
+      }
+      return { type: 'text', value: child.value }
+    })
+  } else if (preset.childrenText) {
     base.childrenItems = [{ type: 'text', value: preset.childrenText }]
   }
 

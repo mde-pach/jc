@@ -221,11 +221,26 @@ export function parseExampleWrapperChain(
 
 // ── Example preset parsing ──────────────────────────────────
 
+/** A single child extracted from an @example JSX block */
+export interface ParsedChild {
+  type: 'text' | 'element'
+  /** Text content for 'text' type, tag name for 'element' type */
+  value: string
+  /** Props on the JSX element (only for 'element' type) */
+  props?: Record<string, string>
+  /** Inner text of the JSX element (only for 'element' type) */
+  innerText?: string
+}
+
 export interface ParsedPreset {
+  /** Optional label from the first line (e.g. `@example Primary Button`) */
+  label?: string
   /** Props extracted from the subject element */
   subjectProps: Record<string, string>
-  /** Text content of the subject element's children */
+  /** Text content of the subject element's children (legacy — plain text only) */
   childrenText: string
+  /** Structured children preserving JSX elements */
+  parsedChildren: ParsedChild[]
   /** Per-wrapper props from the example (keyed by wrapper tag name) */
   wrapperProps: Record<string, Record<string, string>>
 }
@@ -238,19 +253,42 @@ function findSubjectElement(
   node: ts.Node,
   subjectName: string,
   sourceFile: ts.SourceFile,
-): { props: Record<string, string>; childrenText: string } | null {
+): { props: Record<string, string>; childrenText: string; parsedChildren: ParsedChild[] } | null {
   if (ts.isJsxElement(node)) {
     if (getTagName(node.openingElement) === subjectName) {
       const props = extractJsxProps(node.openingElement, sourceFile)
-      // Extract text children
+      const parsedChildren: ParsedChild[] = []
       let childrenText = ''
       for (const child of node.children) {
         if (ts.isJsxText(child)) {
           const text = child.text.trim()
-          if (text) childrenText += text
+          if (text) {
+            childrenText += text
+            parsedChildren.push({ type: 'text', value: text })
+          }
+        } else if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+          const opening = ts.isJsxElement(child) ? child.openingElement : child
+          const tagName = getTagName(opening)
+          const childProps = extractJsxProps(opening, sourceFile)
+          let innerText = ''
+          if (ts.isJsxElement(child)) {
+            for (const grandchild of child.children) {
+              if (ts.isJsxText(grandchild)) {
+                const t = grandchild.text.trim()
+                if (t) innerText += t
+              }
+            }
+          }
+          parsedChildren.push({
+            type: 'element',
+            value: tagName,
+            ...(Object.keys(childProps).length > 0 ? { props: childProps } : {}),
+            ...(innerText ? { innerText } : {}),
+          })
+          childrenText += innerText || tagName
         }
       }
-      return { props, childrenText }
+      return { props, childrenText, parsedChildren }
     }
     // Search children
     for (const child of node.children) {
@@ -260,7 +298,7 @@ function findSubjectElement(
   }
   if (ts.isJsxSelfClosingElement(node)) {
     if (getTagName(node) === subjectName) {
-      return { props: extractJsxProps(node, sourceFile), childrenText: '' }
+      return { props: extractJsxProps(node, sourceFile), childrenText: '', parsedChildren: [] }
     }
   }
   return null
@@ -274,7 +312,18 @@ export function parseExamplePreset(exampleText: string, subjectName: string): Pa
   const cleaned = cleanExampleText(exampleText)
   if (!cleaned) return null
 
-  const wrapped = `const __jc = (\n${cleaned}\n)`
+  // Extract optional label: first non-empty line before any JSX (starts with <)
+  let label: string | undefined
+  let jsxText = cleaned
+  const lines = cleaned.split('\n')
+  const firstLine = lines[0].trim()
+  if (firstLine && !firstLine.startsWith('<') && !firstLine.startsWith('{')) {
+    label = firstLine
+    jsxText = lines.slice(1).join('\n').trim()
+    if (!jsxText) return null
+  }
+
+  const wrapped = `const __jc = (\n${jsxText}\n)`
   const sourceFile = ts.createSourceFile(
     '__example.tsx',
     wrapped,
@@ -300,8 +349,10 @@ export function parseExamplePreset(exampleText: string, subjectName: string): Pa
           }
         }
         result = {
+          ...(label ? { label } : {}),
           subjectProps: found.props,
           childrenText: found.childrenText,
+          parsedChildren: found.parsedChildren,
           wrapperProps,
         }
       }

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { ChildItem } from '../types.js'
+import type { ChildItem, JcComponentMeta, JcExamplePreset, JcPlugin, JcPropMeta, JcResolvedPluginItem } from '../types.js'
 import {
   type FixtureOverride,
   type ShowcaseDefaults,
   type ShowcaseReducerState,
+  computeDefaults,
+  computeFixtureInit,
+  computePresetDefaults,
   createInitialState,
   showcaseReducer,
 } from './showcase-reducer.js'
@@ -518,5 +521,256 @@ describe('edge cases', () => {
     // biome-ignore lint/suspicious/noExplicitAny: testing unknown action type
     const next = showcaseReducer(state, { type: 'UNKNOWN' } as any)
     expect(next).toBe(state)
+  })
+})
+
+// ── Helper builders for compute* tests ──────────────────────
+
+function makePropMeta(overrides?: Partial<JcPropMeta>): JcPropMeta {
+  return {
+    name: 'test',
+    type: 'string',
+    required: false,
+    defaultValue: undefined,
+    description: '',
+    isChildren: false,
+    ...overrides,
+  }
+}
+
+function makeComponentMeta(overrides?: Partial<JcComponentMeta>): JcComponentMeta {
+  return {
+    displayName: 'Button',
+    filePath: 'src/components/button.tsx',
+    description: '',
+    props: {
+      variant: makePropMeta({ name: 'variant', type: "'default' | 'primary'", values: ['default', 'primary'] }),
+      disabled: makePropMeta({ name: 'disabled', type: 'boolean' }),
+    },
+    acceptsChildren: true,
+    ...overrides,
+  }
+}
+
+// ── computeDefaults ─────────────────────────────────────────
+
+describe('computeDefaults', () => {
+  it('generates prop values for a simple component', () => {
+    const comp = makeComponentMeta()
+    const result = computeDefaults(comp, [], [])
+    expect(result.propValues).toBeDefined()
+    expect(typeof result.propValues).toBe('object')
+  })
+
+  it('creates a text child when component accepts children', () => {
+    const comp = makeComponentMeta({ acceptsChildren: true })
+    const result = computeDefaults(comp, [], [])
+    expect(result.childrenItems.length).toBe(1)
+    expect(result.childrenItems[0].type).toBe('text')
+  })
+
+  it('creates no children when component does not accept children', () => {
+    const comp = makeComponentMeta({ acceptsChildren: false })
+    const result = computeDefaults(comp, [], [])
+    expect(result.childrenItems).toEqual([])
+  })
+
+  it('returns empty wrapperPropsMap when no wrappers', () => {
+    const comp = makeComponentMeta()
+    const result = computeDefaults(comp, [], [])
+    expect(result.wrapperPropsMap).toEqual({})
+  })
+
+  it('computes wrapper props from allComponents', () => {
+    const wrapper = makeComponentMeta({
+      displayName: 'Tooltip',
+      props: { content: makePropMeta({ name: 'content', type: 'string' }) },
+      acceptsChildren: false,
+    })
+    const comp = makeComponentMeta({
+      wrapperComponents: [{ displayName: 'Tooltip', defaultProps: { side: 'top' } as Record<string, string> }],
+    })
+    const result = computeDefaults(comp, [], [], [comp, wrapper])
+    expect(result.wrapperPropsMap.Tooltip).toBeDefined()
+    expect(result.wrapperPropsMap.Tooltip.side).toBe('top')
+  })
+
+  it('uses defaultProps when wrapper not found in allComponents', () => {
+    const comp = makeComponentMeta({
+      wrapperComponents: [{ displayName: 'Missing', defaultProps: { x: '1' } }],
+    })
+    const result = computeDefaults(comp, [], [], [comp])
+    expect(result.wrapperPropsMap.Missing).toEqual({ x: '1' })
+  })
+})
+
+// ── computePresetDefaults ───────────────────────────────────
+
+describe('computePresetDefaults', () => {
+  const basePreset: JcExamplePreset = {
+    index: 0,
+    propValues: {},
+    childrenText: '',
+    parsedChildren: [],
+    wrapperProps: {},
+  }
+
+  it('overlays string prop values from preset', () => {
+    const comp = makeComponentMeta()
+    const preset: JcExamplePreset = { ...basePreset, propValues: { variant: 'primary' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.variant).toBe('primary')
+  })
+
+  it('coerces boolean string to boolean', () => {
+    const comp = makeComponentMeta()
+    const preset: JcExamplePreset = { ...basePreset, propValues: { disabled: 'true' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.disabled).toBe(true)
+  })
+
+  it('coerces "false" to boolean false', () => {
+    const comp = makeComponentMeta()
+    const preset: JcExamplePreset = { ...basePreset, propValues: { disabled: 'false' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.disabled).toBe(false)
+  })
+
+  it('coerces number string to number', () => {
+    const comp = makeComponentMeta({
+      props: { count: makePropMeta({ name: 'count', type: 'number' }) },
+    })
+    const preset: JcExamplePreset = { ...basePreset, propValues: { count: '42' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.count).toBe(42)
+  })
+
+  it('skips unknown props', () => {
+    const comp = makeComponentMeta()
+    const preset: JcExamplePreset = { ...basePreset, propValues: { nonexistent: 'val' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.nonexistent).toBeUndefined()
+  })
+
+  it('parses array string values for array type props', () => {
+    const comp = makeComponentMeta({
+      props: { items: makePropMeta({ name: 'items', type: 'string[]' }) },
+    })
+    const preset: JcExamplePreset = { ...basePreset, propValues: { items: '["a","b"]' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.items).toEqual(['a', 'b'])
+  })
+
+  it('falls back to string for unparseable array value', () => {
+    const comp = makeComponentMeta({
+      props: { items: makePropMeta({ name: 'items', type: 'string[]' }) },
+    })
+    const preset: JcExamplePreset = { ...basePreset, propValues: { items: 'not-an-array' } }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.items).toBe('not-an-array')
+  })
+
+  it('parses structured object from JS literal', () => {
+    const comp = makeComponentMeta({
+      props: {
+        contact: makePropMeta({
+          name: 'contact',
+          type: 'ContactInfo',
+          structuredFields: [{ name: 'email', type: 'string', optional: false, isComponent: false }],
+        }),
+      },
+    })
+    const preset: JcExamplePreset = {
+      ...basePreset,
+      propValues: { contact: '{ email: "test@test.com" }' },
+    }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.propValues.contact).toEqual({ email: 'test@test.com' })
+  })
+
+  it('uses childrenText when no parsedChildren', () => {
+    const comp = makeComponentMeta({ acceptsChildren: true })
+    const preset: JcExamplePreset = { ...basePreset, childrenText: 'Click me' }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.childrenItems).toEqual([{ type: 'text', value: 'Click me' }])
+  })
+
+  it('uses parsedChildren text items', () => {
+    const comp = makeComponentMeta({ acceptsChildren: true })
+    const preset: JcExamplePreset = {
+      ...basePreset,
+      parsedChildren: [{ type: 'text', value: 'Hello world' }],
+    }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.childrenItems).toEqual([{ type: 'text', value: 'Hello world' }])
+  })
+
+  it('resolves PascalCase element children as fixture references', () => {
+    const resolvedItems: JcResolvedPluginItem[] = [
+      {
+        key: 'star',
+        label: 'Star',
+        value: () => null,
+        pluginName: 'lucide',
+        qualifiedKey: 'lucide/star',
+        render: () => null,
+        renderPreview: () => null,
+        getValue: () => null,
+      },
+    ]
+    const comp = makeComponentMeta({ acceptsChildren: true })
+    const preset: JcExamplePreset = {
+      ...basePreset,
+      parsedChildren: [{ type: 'element', value: 'Star' }],
+    }
+    const result = computePresetDefaults(comp, preset, [], resolvedItems)
+    expect(result.childrenItems).toEqual([{ type: 'fixture', value: 'lucide/star' }])
+  })
+
+  it('converts lowercase element children to element ChildItem', () => {
+    const comp = makeComponentMeta({ acceptsChildren: true })
+    const preset: JcExamplePreset = {
+      ...basePreset,
+      parsedChildren: [{ type: 'element', value: 'span', innerText: 'hello', props: { className: 'bold' } }],
+    }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.childrenItems[0].type).toBe('element')
+    expect(result.childrenItems[0].value).toBe('span')
+  })
+
+  it('merges wrapper props from preset', () => {
+    const comp = makeComponentMeta()
+    const preset: JcExamplePreset = {
+      ...basePreset,
+      wrapperProps: { Tooltip: { content: 'Help text' } },
+    }
+    const result = computePresetDefaults(comp, preset, [], [])
+    expect(result.wrapperPropsMap.Tooltip).toEqual({ content: 'Help text' })
+  })
+})
+
+// ── computeFixtureInit ──────────────────────────────────────
+
+describe('computeFixtureInit', () => {
+  it('returns init data for a known component', () => {
+    const comp = makeComponentMeta({ displayName: 'Badge', acceptsChildren: true })
+    const result = computeFixtureInit('prop:icon', 'Badge', [comp], [], [])
+    expect(result).toBeDefined()
+    expect(result?.slotKey).toBe('prop:icon')
+    expect(typeof result?.props).toBe('object')
+    expect(typeof result?.childrenText).toBe('string')
+    expect(result?.childrenText.length).toBeGreaterThan(0)
+  })
+
+  it('returns undefined for unknown component', () => {
+    const result = computeFixtureInit('prop:icon', 'NonExistent', [], [], [])
+    expect(result).toBeUndefined()
+  })
+
+  it('returns empty childrenText when component does not accept children', () => {
+    const comp = makeComponentMeta({ displayName: 'Icon', acceptsChildren: false })
+    const result = computeFixtureInit('prop:icon', 'Icon', [comp], [], [])
+    expect(result).toBeDefined()
+    expect(result?.childrenText).toBe('')
   })
 })

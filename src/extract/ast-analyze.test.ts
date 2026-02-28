@@ -21,10 +21,10 @@ function analyzeFixture(fixture: string, componentName: string) {
 // ── Component kind detection ─────────────────────────────────
 
 describe('componentKind detection', () => {
-  it('detects ComponentType as icon kind', () => {
+  it('detects ComponentType as element kind', () => {
     const result = analyzeFixture('icon-component.tsx', 'IconComponent')
     expect(result).toBeDefined()
-    expect(result!.props.icon?.componentKind).toBe('icon')
+    expect(result!.props.icon?.componentKind).toBe('element')
   })
 
   it('detects ReactElement as element kind', () => {
@@ -42,9 +42,9 @@ describe('componentKind detection', () => {
     expect(result!.props.label?.componentKind).toBeUndefined()
   })
 
-  it('detects another ComponentType variant as icon kind', () => {
+  it('detects another ComponentType variant as element kind', () => {
     const result = analyzeFixture('icon-component.tsx', 'IconComponent')
-    expect(result!.props.renderer?.componentKind).toBe('icon')
+    expect(result!.props.renderer?.componentKind).toBe('element')
   })
 
   it('does not classify structured object arrays containing ReactNode as component kind', () => {
@@ -52,6 +52,19 @@ describe('componentKind detection', () => {
     expect(result).toBeDefined()
     // tabs is { label: string; content: ReactNode }[] — a data structure, not a component slot
     expect(result!.props.tabs?.componentKind).toBeUndefined()
+  })
+
+  it('detects ForwardRefExoticComponent (e.g. LucideIcon) as element kind', () => {
+    const result = analyzeFixture('forward-ref-exotic.tsx', 'Card')
+    expect(result).toBeDefined()
+    expect(result!.props.icon?.componentKind).toBe('element')
+    // Should preserve alias name, not structural form
+    expect(result!.props.icon?.simplifiedType).toBe('LucideIcon')
+  })
+
+  it('does not assign componentKind to plain string props alongside ForwardRefExoticComponent', () => {
+    const result = analyzeFixture('forward-ref-exotic.tsx', 'Card')
+    expect(result!.props.title?.componentKind).toBeUndefined()
   })
 })
 
@@ -123,7 +136,7 @@ describe('wrapped components (forwardRef, memo)', () => {
 
   it('detects forwardRef icon prop', () => {
     const result = analyzeFixture('wrapped-components.tsx', 'ForwardRefButton')
-    expect(result!.props.icon?.componentKind).toBe('icon')
+    expect(result!.props.icon?.componentKind).toBe('element')
   })
 
   it('extracts memo component props', () => {
@@ -143,7 +156,7 @@ describe('full integration', () => {
     expect(result!.props.variant?.values).toEqual(['primary', 'secondary', 'destructive'])
     expect(result!.props.size?.values).toEqual(['sm', 'md', 'lg'])
     expect(result!.props.disabled?.isBoolean).toBe(true)
-    expect(result!.props.icon?.componentKind).toBe('icon')
+    expect(result!.props.icon?.componentKind).toBe('element')
   })
 
   it('returns undefined for non-existent component', () => {

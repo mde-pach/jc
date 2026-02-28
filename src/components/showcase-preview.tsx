@@ -11,26 +11,38 @@
  * - Wraps the rendered component in an ErrorBoundary for resilience
  */
 
-import { type ComponentType, type ReactNode, useCallback, useMemo, useState } from 'react'
+import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { C_DARK, C_LIGHT, generateCodeTokens, generateImportTokens } from '../lib/code-tokens.js'
-import { generateVariedInstances } from '../lib/faker-map.js'
+import { generateVariedInstances, resolveControlType } from '../lib/faker-map.js'
+import { getPref, setPref } from '../lib/preferences.js'
+import { useOptionalShowcaseContext } from '../lib/showcase-context.js'
 import { useResolvedComponent } from '../lib/use-resolved-component.jsx'
 import type { FixtureOverride } from '../lib/use-showcase-state.js'
 import type { JcTheme } from '../lib/use-theme.js'
 import type { ChildItem, JcComponentMeta, JcMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
 import { ErrorBoundary } from './error-boundary.js'
 
+/** Module-level sentinels — stable references, no useMemo needed */
+const EMPTY_META: JcMeta = { generatedAt: '', componentDir: '', components: [] }
+const EMPTY_COMPONENT: JcComponentMeta = {
+  displayName: '',
+  filePath: '',
+  description: '',
+  props: {},
+  acceptsChildren: false,
+}
+
 interface ShowcasePreviewProps {
-  component: JcComponentMeta
-  propValues: Record<string, unknown>
-  childrenItems: ChildItem[]
-  resolvedItems: JcResolvedPluginItem[]
-  plugins: JcPlugin[]
-  meta: JcMeta
-  fixtureOverrides: Record<string, FixtureOverride>
-  wrapperPropsMap: Record<string, Record<string, unknown>>
+  component?: JcComponentMeta
+  propValues?: Record<string, unknown>
+  childrenItems?: ChildItem[]
+  resolvedItems?: JcResolvedPluginItem[]
+  plugins?: JcPlugin[]
+  meta?: JcMeta
+  fixtureOverrides?: Record<string, FixtureOverride>
+  wrapperPropsMap?: Record<string, Record<string, unknown>>
   // biome-ignore lint/suspicious/noExplicitAny: registry values are dynamically imported components with unknown prop shapes
-  registry: Record<string, () => Promise<ComponentType<any>>>
+  registry?: Record<string, () => Promise<ComponentType<any>>>
   wrapper?: ComponentType<{ children: ReactNode }>
   viewportWidth?: number
   theme?: JcTheme
@@ -39,25 +51,36 @@ interface ShowcasePreviewProps {
   presetMode?: 'generated' | number
 }
 
-export function ShowcasePreview({
-  component,
-  propValues,
-  childrenItems,
-  resolvedItems,
-  plugins,
-  meta,
-  fixtureOverrides,
-  wrapperPropsMap,
-  registry,
-  wrapper,
-  viewportWidth,
-  theme = 'dark',
-  instanceCount = 1,
-  onInstanceCountChange,
-  presetMode = 'generated',
-}: ShowcasePreviewProps) {
+export function ShowcasePreview(props: ShowcasePreviewProps) {
+  const ctx = useOptionalShowcaseContext()
+
+  // Resolve each prop: explicit prop wins, then context fallback
+  const component = props.component ?? ctx?.state.selectedComponent
+  const propValues = props.propValues ?? ctx?.state.propValues ?? {}
+  const childrenItems = props.childrenItems ?? ctx?.state.childrenItems ?? []
+  const resolvedItems = props.resolvedItems ?? ctx?.resolvedItems ?? []
+  const plugins = props.plugins ?? ctx?.plugins ?? []
+  const meta = props.meta ?? ctx?.meta
+  const fixtureOverrides = props.fixtureOverrides ?? ctx?.state.fixtureOverrides ?? {}
+  const wrapperPropsMap = props.wrapperPropsMap ?? ctx?.state.wrapperPropsMap ?? {}
+  const registry = props.registry ?? ctx?.registry ?? {}
+  const wrapper = props.wrapper ?? ctx?.wrapper
+  const viewportWidth = props.viewportWidth
+  const theme = props.theme ?? 'dark'
+  const instanceCount = props.instanceCount ?? ctx?.state.instanceCount ?? 1
+  const onInstanceCountChange = props.onInstanceCountChange ?? ctx?.state.setInstanceCount
+  const presetMode = props.presetMode ?? ctx?.state.presetMode ?? 'generated'
+
+  // Use module-level sentinels when component/meta not available
+  const safeComponent = component ?? EMPTY_COMPONENT
+  const safeMeta = meta ?? EMPTY_META
+
   const [copied, setCopied] = useState(false)
-  const [codeMode, setCodeMode] = useState<'jsx' | 'full'>('jsx')
+  const [codeMode, _setCodeMode] = useState<'jsx' | 'full'>(() => getPref('codeMode') ?? 'jsx')
+  const setCodeMode = useCallback((mode: 'jsx' | 'full') => {
+    _setCodeMode(mode)
+    setPref('codeMode', mode)
+  }, [])
 
   const {
     LoadedComponent,
@@ -68,48 +91,90 @@ export function ShowcasePreview({
     resolveProps,
     wrapElement,
   } = useResolvedComponent({
-    component,
+    component: safeComponent,
     propValues,
     childrenItems,
     resolvedItems,
     plugins,
-    meta,
+    meta: safeMeta,
     fixtureOverrides,
     wrapperPropsMap,
     registry,
     wrapper,
   })
 
+  // ── Event logging for callback props ──────────────────────────
+  interface EventLogEntry {
+    id: number
+    propName: string
+    args: unknown[]
+    timestamp: number
+  }
+  const eventLogRef = useRef<EventLogEntry[]>([])
+  const eventIdRef = useRef(0)
+  const [eventLogVersion, setEventLogVersion] = useState(0)
+  const [showEvents, setShowEvents] = useState(false)
+  const eventLog = eventLogRef.current
+
+  // Clear events when component changes
+  useEffect(() => {
+    eventLogRef.current = []
+    setEventLogVersion(0)
+  }, [component?.displayName])
+
+  // Wrap cleanProps: inject logging wrappers for function-type (readonly) props
+  const propsWithEvents = useMemo(() => {
+    if (!component) return cleanProps
+    const result = { ...cleanProps }
+    for (const [key, propMeta] of Object.entries(component.props)) {
+      const ct = resolveControlType(propMeta)
+      if (ct === 'readonly') {
+        result[key] = (...args: unknown[]) => {
+          const entry: EventLogEntry = {
+            id: ++eventIdRef.current,
+            propName: key,
+            args,
+            timestamp: Date.now(),
+          }
+          eventLogRef.current = [...eventLogRef.current.slice(-49), entry]
+          setEventLogVersion((v) => v + 1)
+        }
+      }
+    }
+    return result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleanProps, component, eventLogVersion])
+
   // Generate varied instances for multi-render (generated mode only)
   const firstChildText =
     childrenItems.length > 0 && childrenItems[0].type === 'text' ? childrenItems[0].value : ''
   const variedInstances = useMemo(() => {
-    if (presetMode !== 'generated' || instanceCount <= 1) return null
-    return generateVariedInstances(component, plugins, resolvedItems, propValues, firstChildText, instanceCount)
-  }, [presetMode, instanceCount, component, plugins, resolvedItems, propValues, firstChildText])
+    if (!component || presetMode !== 'generated' || instanceCount <= 1) return null
+    return generateVariedInstances(safeComponent, plugins, resolvedItems, propValues, firstChildText, instanceCount)
+  }, [component, presetMode, instanceCount, safeComponent, plugins, resolvedItems, propValues, firstChildText])
 
   // Generate highlighted JSX tokens
   const colors = theme === 'light' ? C_LIGHT : C_DARK
   const jsxTokens = useMemo(
     () =>
       generateCodeTokens(
-        component,
+        safeComponent,
         propValues,
         childrenItems,
         resolvedItems,
         colors,
         fixtureOverrides,
-        meta,
+        safeMeta,
         wrapperPropsMap,
       ),
     [
-      component,
+      safeComponent,
       propValues,
       childrenItems,
       resolvedItems,
       colors,
       fixtureOverrides,
-      meta,
+      safeMeta,
       wrapperPropsMap,
     ],
   )
@@ -117,15 +182,15 @@ export function ShowcasePreview({
   const importTokens = useMemo(
     () =>
       generateImportTokens(
-        component,
+        safeComponent,
         propValues,
         childrenItems,
         resolvedItems,
         fixtureOverrides,
-        meta,
+        safeMeta,
         colors,
       ),
-    [component, propValues, childrenItems, resolvedItems, fixtureOverrides, meta, colors],
+    [safeComponent, propValues, childrenItems, resolvedItems, fixtureOverrides, safeMeta, colors],
   )
 
   const codeTokens = useMemo(() => {
@@ -142,6 +207,9 @@ export function ShowcasePreview({
       setTimeout(() => setCopied(false), 1500)
     })
   }, [codeTokens])
+
+  // Cannot render without a component
+  if (!component) return null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -263,11 +331,99 @@ export function ShowcasePreview({
             </div>
           ) : (
             <ErrorBoundary componentName={component.displayName}>
-              {wrapElement(<LoadedComponent {...cleanProps}>{resolvedChildren}</LoadedComponent>)}
+              {wrapElement(<LoadedComponent {...propsWithEvents}>{resolvedChildren}</LoadedComponent>)}
             </ErrorBoundary>
           )}
         </div>
       </div>
+
+      {/* Events panel — shows logged callback invocations */}
+      {eventLog.length > 0 && (
+        <div
+          style={{
+            borderTop: '1px solid var(--jc-border)',
+            flexShrink: 0,
+            maxHeight: showEvents ? '150px' : '28px',
+            transition: 'max-height 0.15s ease',
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowEvents((s) => !s)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 16px',
+              height: '28px',
+              border: 'none',
+              cursor: 'pointer',
+              backgroundColor: 'var(--jc-muted)',
+              color: 'inherit',
+              fontSize: '9px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Events
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '16px',
+                  height: '14px',
+                  padding: '0 4px',
+                  borderRadius: '7px',
+                  backgroundColor: 'var(--jc-accent)',
+                  color: 'var(--jc-accent-fg)',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                }}
+              >
+                {eventLog.length}
+              </span>
+            </span>
+            <span style={{ opacity: 0.4, fontSize: '8px' }}>{showEvents ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {showEvents && (
+            <div style={{ overflowY: 'auto', maxHeight: '122px', padding: '4px 0' }}>
+              {[...eventLog].reverse().map((entry) => (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '8px',
+                    padding: '2px 16px',
+                    fontSize: '10px',
+                    fontFamily: '"SF Mono", "Fira Code", Menlo, Consolas, monospace',
+                  }}
+                >
+                  <span style={{ opacity: 0.3, fontSize: '8px', flexShrink: 0 }}>
+                    {new Date(entry.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span style={{ color: 'var(--jc-accent)', fontWeight: 600 }}>
+                    {entry.propName}
+                  </span>
+                  <span style={{ opacity: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {entry.args.length > 0
+                      ? entry.args.map((a) => {
+                          try { return JSON.stringify(a) }
+                          catch { return String(a) }
+                        }).join(', ')
+                      : '(no args)'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Code preview — syntax highlighted, fits content up to 1/3 of panel */}
       <div

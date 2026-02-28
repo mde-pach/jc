@@ -1,22 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { JcComponentMeta, JcPlugin, JcResolvedPluginItem } from '../types.js'
+import { makeComponent } from '../__test-utils__/factories.js'
+import type { JcPlugin, JcPropMeta, JcResolvedPluginItem } from '../types.js'
 import { generateDefaults } from './faker-map.js'
-
-function makeComponent(overrides: Partial<JcComponentMeta> = {}): JcComponentMeta {
-  return {
-    displayName: 'Card',
-    filePath: 'src/components/ui/card.tsx',
-    description: '',
-    props: {},
-    acceptsChildren: false,
-    ...overrides,
-  }
-}
+import { suggestPluginForProp } from './plugins.js'
 
 const plugins: JcPlugin[] = [
   {
     name: 'lucide',
-    match: { types: ['LucideIcon'], kinds: ['icon'] },
+    match: { types: ['LucideIcon'] },
     items: [
       { key: 'star', label: 'Star', value: () => null },
     ],
@@ -102,12 +93,12 @@ describe('generateDefaults', () => {
           required: true,
           description: '',
           isChildren: false,
-          componentKind: 'icon',
+          componentKind: 'element',
         },
       },
     })
     const result = generateDefaults(comp, plugins, resolvedItems)
-    // Should pick the first fixture matching the 'icon' kind (lucide/star via type match)
+    // Should pick the first fixture matching the 'element' kind (lucide/star via type match)
     expect(result.icon).toBe('lucide/star')
   })
 
@@ -120,7 +111,7 @@ describe('generateDefaults', () => {
           required: false,
           description: '',
           isChildren: false,
-          componentKind: 'icon',
+          componentKind: 'element',
         },
       },
     })
@@ -137,7 +128,7 @@ describe('generateDefaults', () => {
           required: false,
           description: '',
           isChildren: false,
-          componentKind: 'icon',
+          componentKind: 'element',
         },
       },
     })
@@ -202,7 +193,7 @@ describe('generateDefaults', () => {
           required: false,
           description: '',
           isChildren: false,
-          componentKind: 'icon',
+          componentKind: 'element',
         },
       },
     })
@@ -249,5 +240,83 @@ describe('generateDefaults', () => {
     })
     const result = generateDefaults(comp, plugins, resolvedItems)
     expect(result.content).toBeUndefined()
+  })
+
+  it('leaves required element-kind props undefined when no plugin matches (not text)', () => {
+    const comp = makeComponent({
+      props: {
+        icon: {
+          name: 'icon',
+          type: 'LucideIcon',
+          required: true,
+          description: '',
+          isChildren: false,
+          componentKind: 'element',
+        },
+      },
+    })
+    // No plugins loaded — element-kind should NOT default to text
+    const result = generateDefaults(comp, [], [])
+    expect(result.icon).toBeUndefined()
+  })
+})
+
+describe('suggestPluginForProp', () => {
+  it('suggests lucide plugin for LucideIcon type when not loaded', () => {
+    const prop: JcPropMeta = {
+      name: 'icon',
+      type: 'LucideIcon',
+      required: true,
+      description: '',
+      isChildren: false,
+      componentKind: 'element',
+    }
+    const result = suggestPluginForProp(prop, [])
+    expect(result).toEqual({
+      name: 'lucide',
+      importPath: 'jc/plugins/lucide',
+      importName: 'lucidePlugin',
+    })
+  })
+
+  it('returns null when lucide plugin is already loaded', () => {
+    const prop: JcPropMeta = {
+      name: 'icon',
+      type: 'LucideIcon',
+      required: true,
+      description: '',
+      isChildren: false,
+      componentKind: 'element',
+    }
+    const result = suggestPluginForProp(prop, plugins)
+    expect(result).toBeNull()
+  })
+
+  it('returns null for unknown types', () => {
+    const prop: JcPropMeta = {
+      name: 'icon',
+      type: 'SomeCustomIcon',
+      required: true,
+      description: '',
+      isChildren: false,
+      componentKind: 'element',
+    }
+    const result = suggestPluginForProp(prop, [])
+    expect(result).toBeNull()
+  })
+
+  it('matches via rawType when type does not match directly', () => {
+    const prop: JcPropMeta = {
+      name: 'icon',
+      type: 'ForwardRefExoticComponent<LucideProps>',
+      rawType: 'ForwardRefExoticComponent<LucideProps>',
+      required: true,
+      description: '',
+      isChildren: false,
+      componentKind: 'element',
+    }
+    const result = suggestPluginForProp(prop, [])
+    expect(result).not.toBeNull()
+    expect(result?.name).toBe('lucide')
   })
 })

@@ -10,7 +10,7 @@
 |------|---------|
 | TypeScript 5 | Language (strict mode) |
 | tsup | Build tool (ESM lib + CJS CLI) |
-| Vitest | Test runner (316 tests) |
+| Vitest | Test runner (636 tests across 22 files) |
 | react-docgen-typescript | Prop extraction (CLI only, bundled) |
 | @faker-js/faker | Smart default values (externalized in ESM) |
 | React >= 18 | Peer dependency |
@@ -20,24 +20,44 @@
 ```
 src/
 ├── cli.ts                    # CLI entry (jc extract / --watch)
-├── config.ts                 # Config resolution + defineConfig
+├── config.ts                 # Config resolution + defineConfig + mergeConfig
 ├── types.ts                  # All TypeScript interfaces
 ├── index.ts                  # Public API exports (jc)
+├── advanced.ts               # Power-user exports (jc/advanced)
 ├── next.tsx                  # Next.js adapter (jc/next)
+├── react.tsx                 # Vite/CRA adapter (jc/react)
+├── __test-utils__/
+│   └── factories.ts          # Shared test factories (makeProp, makeComponent, etc.)
 ├── extract/
-│   ├── extract.ts            # Core extraction engine
+│   ├── extractor.ts          # Extractor interface definition
+│   ├── pipeline.ts           # Framework-agnostic extraction pipeline
+│   ├── react-docgen-extractor.ts # Default extractor (react-docgen-typescript + AST)
+│   ├── extract.ts            # Thin resolver, re-exports for compat
 │   ├── example-parser.ts     # @example JSDoc → presets + wrappers
 │   ├── ast-analyze.ts        # AST-based component analysis
+│   ├── discover.ts           # Smart component file discovery
+│   ├── detect-environment.ts # Framework/icon lib/CSS auto-detection
 │   └── usage-analysis.ts     # Cross-file usage counting
+├── plugins/
+│   └── lucide/
+│       └── index.ts          # Zero-config lucide plugin (jc/plugins/lucide)
 ├── lib/
+│   ├── plugins.ts            # Plugin system: definePlugin, fromComponents, scoring
 │   ├── faker-map.ts          # Prop name/type → faker value heuristics
-│   ├── fixtures.ts           # Fixture plugin resolution
+│   ├── faker-strategy.ts     # FakerStrategy extensible interface
+│   ├── fixtures.ts           # Fixture rendering + resolution
+│   ├── fixture-registry.ts   # O(1) fixture item lookup registry
+│   ├── load-meta.ts          # Type-safe meta.json loader
+│   ├── preferences.ts        # localStorage persistence (jc-prefs: theme, panel widths, code mode)
+│   ├── showcase-reducer.ts   # Pure state reducer + compute helpers
+│   ├── showcase-context.tsx   # ShowcaseProvider + context hooks
 │   ├── code-tokens.ts        # Syntax highlighting tokenizer
 │   ├── theme-vars.ts         # THEME constant (light/dark CSS vars)
 │   ├── url-sync.ts           # URL read/write + hash-based state
 │   ├── use-showcase-state.ts # Central state hook
-│   ├── use-resolved-component.tsx # Resolves fixtures + props → rendered element
-│   └── use-theme.ts          # Theme management hook
+│   ├── use-resolved-component.tsx # Resolves plugins + props → rendered element
+│   ├── use-theme.ts          # Theme management hook
+│   └── utils.ts              # PascalCase, slot key parsing
 └── components/
     ├── showcase-app.tsx       # Root layout (supports render prop)
     ├── showcase-sidebar.tsx   # Component list with search
@@ -49,10 +69,10 @@ src/
     └── field/                 # Modular control editors
         ├── index.ts
         ├── showcase-field.tsx # Dispatcher (~200 lines)
-        ├── icon-picker.tsx
+        ├── grid-picker.tsx    # Grid layout picker (icons, etc.)
+        ├── node-field-input.tsx # NodePicker for ReactNode props
         ├── component-picker.tsx
         ├── fixture-picker.tsx
-        ├── node-field-input.tsx
         ├── array-editor.tsx
         ├── component-fixture-editor.tsx
         └── styles.ts
@@ -64,41 +84,63 @@ src/
 bun install            # Install dependencies
 bun run dev            # Watch mode build
 bun run build          # Production build
-bun run test           # Run tests (316 tests across 12 files)
+bun run test           # Run tests (636 tests across 22 files)
 bun run test:watch     # Tests in watch mode
 bun run type-check     # TypeScript validation
+bun run test:coverage  # Tests with coverage report
 bun run lint           # Biome check
 bun run lint:fix       # Biome auto-fix
 ```
 
 ## Package Exports
 
-Three entry points defined in `package.json`:
+Six entry points defined in `package.json`:
 
-| Entry | Exports | Description |
-|-------|---------|-------------|
-| `jc` | ShowcaseApp, ShowcaseControls, ShowcasePreview, ShowcaseSidebar, ThemeToggle, ViewportPicker, ShowcaseField, FixturePicker, ComponentFixtureEditor, useShowcaseState, useResolvedComponent, defineFixtures, resolveFixturePlugins, resolveFixtureValue + all types | Main library |
-| `jc/config` | defineConfig, resolveConfig, defaultConfig | Configuration utilities |
+| Entry | Key Exports | Description |
+|-------|-------------|-------------|
+| `jc` | ShowcaseApp, definePlugin, fromComponents, loadMeta, JcTheme, ShowcaseRenderContext + all types | Main library |
+| `jc/advanced` | Sub-components (ShowcaseControls, ShowcasePreview, ShowcaseSidebar, ThemeToggle, ViewportPicker), field controls (ShowcaseField, ComponentFixtureEditor, FixturePicker), primitives (GridPicker, NodePicker), state (useShowcaseState, useResolvedComponent, ShowcaseProvider, showcaseReducer, FixtureRegistry), fixture rendering (renderComponentFixture, fixtureToCodeString), plugin internals (resolvePluginItems, resolveItemValue, resolveValueMode, getPluginForProp, getItemsForProp, suggestPluginForProp, clearPluginCaches), faker strategy (createFakerResolver, defineFakerStrategy) | Power-user sub-components, state, context |
+| `jc/config` | defineConfig, resolveConfig, mergeConfig, defaultConfig, Extractor types | Configuration utilities |
 | `jc/next` | createShowcasePage | Next.js App Router factory |
+| `jc/react` | createShowcase | Vite/CRA/plain React factory |
+| `jc/plugins/lucide` | lucidePlugin, lucide(options?) | Zero-config Lucide icon plugin |
 
 ## Build Architecture
 
-Three separate tsup build targets in `tsup.config.ts`:
+tsup builds 6 ESM entry points + 1 CJS CLI in `tsup.config.ts`:
 
-1. **Library** (`index.ts`, `config.ts`, `next.tsx`) → ESM with `.d.ts`, externals: react, faker
+1. **Library** (`index.ts`, `advanced.ts`, `config.ts`, `next.tsx`, `react.tsx`, `plugins/lucide/index.ts`) → ESM with `.d.ts`, externals: react, faker
 2. **CLI** (`cli.ts`) → CJS with shebang, bundles `react-docgen-typescript`
-3. **Post-build** `onSuccess` hook injects `'use client'` directive into `index.js` and `next.js`
+3. **Post-build** `onSuccess` hook injects `'use client'` directive into `index.js`, `advanced.js`, `next.js`, `react.js`, `plugins/lucide.js`
 
 ## Key Patterns
 
 ### Config merging
 Array fields (`excludeFiles`, `filteredProps`, etc.) use **union merge** with dedup — user values extend defaults, not replace.
 
-### Component detection
-`detectComponentKind()` in `extract.ts` uses a layered heuristic:
-1. Type pattern matching (LucideIcon → icon, ReactElement → element, ReactNode → node)
-2. Prop name heuristics (icon-suffixed → icon, badge/action → node)
-3. Source regex tiebreaker for ambiguous cases
+### Extraction pipeline
+- `Extractor` interface in `extractor.ts` — pluggable extraction engine
+- `pipeline.ts` — framework-agnostic: `discoverFiles()`, `runPipeline()`, post-processing
+- `react-docgen-extractor.ts` — default extractor using react-docgen-typescript + AST + regex fallbacks
+- `discover.ts` — zero-config multi-glob probing with Next.js convention file filtering
+- `detect-environment.ts` — auto-detects framework, icon libs, CSS framework, path aliases from tsconfig
+
+### Component kind detection
+Extraction reports raw React types only:
+- `ReactNode` → `'node'`
+- `ReactElement`, `JSX.Element`, `ComponentType`, `FC` → `'element'`
+- No library-specific types (LucideIcon, etc.) — plugins handle those via `match.types`
+
+### Plugin system
+`definePlugin()` returns a factory `() => JcPlugin`. Scored matching in `getPluginForProp()`:
+- `match.types` → +100 (e.g. `'LucideIcon'`)
+- `match.kinds` → +50 (e.g. `'element'`)
+- `match.propNames` → +25 (regex patterns)
+- Plus `plugin.priority` offset
+
+Three `valueMode` options: `'render'` (default), `'constructor'`, `'element'`.
+
+`fromComponents(module)` auto-generates plugin items from module exports with PascalCase filtering.
 
 ### Type name filtering
 `isTypeName()` uses an **explicit allowlist** of ~50 known TS/React type names. Never uses length-based heuristics — real enum values like "Primary", "Destructive" must not be filtered.
@@ -109,12 +151,11 @@ Array fields (`excludeFiles`, `filteredProps`, etc.) use **union merge** with de
 - `select` — enum/literal unions
 - `multiline` — long text, JSX snippets
 - `json` — object/array props
+- `object` — structured object props (with `structuredFields`)
 - `array` — string arrays and structured lists
-- `component` — props with `componentKind` (icon/element/node)
+- `color` — color string props (hex, rgb, etc.)
+- `component` — props with `componentKind` (element/node)
 - `readonly` — immutable/computed props
-
-### Fixture system
-Props typed as `LucideIcon`, `ReactNode`, etc. use fixture plugins for visual pickers. Qualified keys (`lucide/star`) prevent collisions. Category-based matching routes icon props to icon fixtures, etc.
 
 ### Wrapper detection
 `@example` JSDoc blocks are parsed to detect parent wrappers. The showcase auto-wraps the component and provides separate controls for wrapper props.
@@ -142,18 +183,39 @@ Instance count toggle (1, 3, or 5 varied instances) with different faker-generat
 
 ## Testing
 
-Tests are co-located with source files (`*.test.ts`). 316 tests across 12 files.
+Tests are co-located with source files (`*.test.ts`). 636 tests across 22 files.
 
 Key test modules:
+
+**Extraction (7 files):**
 - `extract.test.ts` — Type simplification, value extraction, type name detection, component kind, path alias
 - `extract-integration.test.ts` — End-to-end extraction from fixture files
 - `example-parser.test.ts` — @example JSDoc parsing, wrapper detection
-- `usage-analysis.test.ts` — Cross-file usage counting
 - `ast-analyze.test.ts` — AST-based component analysis
+- `discover.test.ts` — Smart component file discovery
+- `detect-environment.test.ts` — Framework/icon lib/CSS detection
+- `usage-analysis.test.ts` — Cross-file usage counting
+
+**Library/core (10 files):**
+- `showcase-reducer.test.ts` — All reducer actions + computeDefaults/computePresetDefaults/computeFixtureInit
 - `faker-map.test.ts` — Control type resolution, fake value generation
+- `faker-strategy.test.ts` — Custom faker strategy resolution
 - `fixtures.test.ts` — Plugin resolution, value lookup, kind filtering
+- `fixtures-render.test.tsx` — Fixture rendering with Radix asChild/cloneElement
+- `fixture-registry.test.ts` — O(1) registry lookup
+- `generate-defaults.test.ts` — Default value generation with plugin interaction
+- `url-sync.test.ts` — URL state serialization
+- `detect-theme.test.ts` — Theme detection
+
+**Components (3 files):**
 - `showcase-preview.test.ts` — Code generation, syntax highlighting
+- `showcase-sidebar.test.tsx` — Sidebar search, filtering, navigation
+- `showcase-controls.test.tsx` — Controls panel rendering
+- `error-boundary.test.tsx` — Error boundary fallback
+
+**Config + plugins (2 files):**
 - `config.test.ts` — Default config, merge behavior, array union
+- `plugins/lucide/index.test.ts` — Plugin factory, matching, options
 
 ## Example Project
 
@@ -165,7 +227,7 @@ cd example && bun install && bunx jc extract && bun run dev
 
 - `/` — Landing page with live showcase embed
 - `/showcase` — Full interactive playground
-- `/docs/*` — Getting started, configuration, fixtures, API, frameworks
+- `/docs/*` — Getting started, configuration, plugins, API, frameworks
 
 ## Important Notes
 
@@ -174,5 +236,5 @@ cd example && bun install && bunx jc extract && bun run dev
 - The `'use client'` directive is injected post-build because esbuild strips module-level directives
 - All components use `'use client'` — the showcase is entirely client-rendered
 - The CLI uses `fs.watch` with recursive option for `--watch` mode (requires Node 18+ or Bun)
-- Meta JSON needs a cast in TypeScript: `meta as unknown as JcMeta` (TS structural type mismatch with JSON imports)
+- Use `loadMeta(meta)` to load generated meta.json — eliminates the old `as unknown as JcMeta` cast
 - Example `.next` cache sometimes stale — `rm -rf example/.next` before build if errors

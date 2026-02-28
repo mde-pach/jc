@@ -19,17 +19,18 @@ export default function GettingStartedPage() {
       </Section>
 
       <Section title="Install">
-        <CodeBlock code="bun add jc" language="bash" />
+        <CodeBlock code="bun add github:mde-pach/jc" language="bash" />
         <p className="text-sm text-fg-muted mt-3">
           Peer dependencies: <CodeBlock code="react" inline /> and <CodeBlock code="react-dom" inline /> (18+).
+          Not on npm yet — install directly from GitHub.
         </p>
       </Section>
 
       <Section title="Extract">
         <CodeBlock code="bunx jc extract" language="bash" />
         <p className="text-sm text-fg-muted mt-4 leading-relaxed">
-          Scans your component files (default: <CodeBlock code="src/components/ui/**/*.tsx" inline />),
-          parses TypeScript prop interfaces via react-docgen-typescript, and writes two files:
+          Scans your component files, parses TypeScript prop interfaces via react-docgen-typescript,
+          and writes two files into your configured <CodeBlock code="outputDir" inline />:
         </p>
         <div className="mt-4">
           <DataTable
@@ -44,20 +45,24 @@ export default function GettingStartedPage() {
       </Section>
 
       <Section title="Create your page">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          Use <CodeBlock code="loadMeta()" inline /> to import the generated JSON — it handles the TypeScript cast for you:
+        </p>
         <CodeBlock
           language="tsx"
           code={`// src/app/showcase/page.tsx
 'use client'
 
-import type { JcMeta } from 'jc'
-import { ShowcaseApp } from 'jc'
-import meta from '@/jc/generated/meta.json'
+import { ShowcaseApp, loadMeta } from 'jc'
 import { registry } from '@/jc/generated/registry'
+import metaJson from '@/jc/generated/meta.json'
+
+const meta = loadMeta(metaJson)
 
 export default function ShowcasePage() {
   return (
     <ShowcaseApp
-      meta={meta as unknown as JcMeta}
+      meta={meta}
       registry={registry}
     />
   )
@@ -68,64 +73,60 @@ export default function ShowcasePage() {
             ShowcaseApp uses React hooks, localStorage, and history.replaceState. It must render in a client context.
           </Callout>
         </div>
-        <p className="text-sm text-fg-muted mt-4 leading-relaxed">
+        <p className="text-sm text-fg-muted mt-6 mb-3 leading-relaxed">
           Or use the Next.js adapter for zero boilerplate:
-        </p>
-        <div className="mt-3">
-          <CodeBlock
-            language="tsx"
-            code={`// src/app/showcase/page.tsx
-import { createShowcasePage } from 'jc/next'
-import meta from '@/jc/generated/meta.json'
-import { registry } from '@/jc/generated/registry'
-
-export default createShowcasePage({ meta, registry })`}
-          />
-        </div>
-      </Section>
-
-      <Section title="Add fixtures">
-        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
-          Props typed as React components (like <CodeBlock code="icon?: LucideIcon" inline />) need
-          concrete values. Fixture plugins provide them with visual pickers.
         </p>
         <CodeBlock
           language="tsx"
-          code={`import { defineFixtures } from 'jc'
-import { Star, Heart, Zap, Download, Trash2 } from 'lucide-react'
-import { createElement } from 'react'
+          code={`// src/app/showcase/page.tsx
+import { createShowcasePage } from 'jc/next'
+import metaJson from '@/jc/generated/meta.json'
+import { registry } from '@/jc/generated/registry'
 
-function icon(Comp: typeof Star, size = 20) {
-  return {
-    render: () => createElement(Comp, { size }),
-    renderPreview: () => createElement(Comp, { size: 14 }),
-    component: Comp,
-  }
-}
-
-export const lucideFixtures = defineFixtures({
-  name: 'lucide',
-  fixtures: [
-    { key: 'star', label: 'Star', category: 'icons', ...icon(Star) },
-    { key: 'heart', label: 'Heart', category: 'icons', ...icon(Heart) },
-    { key: 'zap', label: 'Zap', category: 'icons', ...icon(Zap) },
-    { key: 'download', label: 'Download', category: 'icons', ...icon(Download) },
-    { key: 'trash', label: 'Trash', category: 'icons', ...icon(Trash2) },
-  ],
-})`}
+export default createShowcasePage({ meta: metaJson, registry })`}
         />
-        <p className="text-sm text-fg-muted mt-4">
-          Pass fixtures to ShowcaseApp:
+        <p className="text-sm text-fg-muted mt-3 leading-relaxed">
+          <CodeBlock code="createShowcasePage()" inline /> wraps the client component automatically — no{' '}
+          <CodeBlock code="'use client'" inline /> needed in your page file.
         </p>
-        <div className="mt-3">
-          <CodeBlock
-            language="tsx"
-            code={`<ShowcaseApp
-  meta={meta as unknown as JcMeta}
-  registry={registry}
-  fixtures={[lucideFixtures]}
-/>`}
-          />
+      </Section>
+
+      <Section title="Add plugins">
+        <p className="text-sm text-fg-muted mb-4 leading-relaxed">
+          Props typed as React components (like <CodeBlock code="icon?: LucideIcon" inline />) need
+          concrete values. Plugins provide them with visual pickers. The built-in Lucide plugin
+          is zero-config — just import and pass it:
+        </p>
+        <CodeBlock
+          language="tsx"
+          code={`import { ShowcaseApp, loadMeta } from 'jc'
+import { lucidePlugin } from 'jc/plugins/lucide'
+import { registry } from '@/jc/generated/registry'
+import metaJson from '@/jc/generated/meta.json'
+
+const meta = loadMeta(metaJson)
+
+export default function ShowcasePage() {
+  return (
+    <ShowcaseApp
+      meta={meta}
+      registry={registry}
+      plugins={[lucidePlugin]}
+    />
+  )
+}`}
+        />
+        <p className="text-sm text-fg-muted mt-4 leading-relaxed">
+          <CodeBlock code="lucidePlugin" inline /> automatically matches props typed as{' '}
+          <CodeBlock code="LucideIcon" inline /> and renders an icon picker with the full Lucide catalog.
+          Requires <CodeBlock code="lucide-react" inline /> as a peer dependency.
+        </p>
+        <div className="mt-4">
+          <Callout intent="info" title="Custom plugins">
+            Need to support other icon libraries or design system components? Use{' '}
+            <CodeBlock code="definePlugin()" inline /> from <CodeBlock code="jc" inline /> to build
+            your own. See the Plugins documentation for details.
+          </Callout>
         </div>
       </Section>
 

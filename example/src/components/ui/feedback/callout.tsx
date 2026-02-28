@@ -55,7 +55,7 @@ export function Callout({
       {dismissible && (
         <button
           type="button"
-          className="shrink-0 text-fg-subtle hover:text-fg transition-colors mb-0"
+          className="shrink-0 text-fg-subtle hover:text-fg transition-colors mb-auto"
           aria-label="Dismiss"
         >
           <XCircle size={16} />

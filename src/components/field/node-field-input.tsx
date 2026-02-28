@@ -11,7 +11,7 @@ import type { JcResolvedPluginItem } from '../../types.js'
 import { FixturePicker } from './fixture-picker.js'
 import { inputStyle } from './styles.js'
 
-export function NodeFieldInput({
+export function NodePicker({
   value,
   resolvedItems,
   onChange,

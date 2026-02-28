@@ -7,10 +7,21 @@ export default defineConfig({
       include: ['src/**/*.ts', 'src/**/*.tsx'],
       exclude: [
         'src/**/*.test.ts',
+        'src/**/*.test.tsx',
         'src/cli.ts',
         'src/index.ts',
         'src/next.tsx',
         'src/types.ts',
+        // Barrel re-export — zero runtime logic, same as index.ts
+        'src/advanced.ts',
+        // React adapter — thin wrapper, same category as next.tsx
+        'src/react.tsx',
+        // Pure TypeScript interfaces — zero runtime code
+        'src/extract/extractor.ts',
+        // React context/hooks wiring — no testable logic without mount
+        'src/lib/showcase-context.tsx',
+        // Single identity function (type cast) — trivial
+        'src/lib/load-meta.ts',
         // React components — pure logic (generateCodeTokens, formatArrayTokens) is exported
         // and tested; remaining code is React rendering/hooks not unit-testable without mount
         'src/components/**',

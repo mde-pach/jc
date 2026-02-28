@@ -149,7 +149,7 @@ describe('generateCodeTokens', () => {
           required: false,
           description: '',
           isChildren: false,
-          componentKind: 'icon',
+          componentKind: 'element',
         },
       },
     })

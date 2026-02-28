@@ -30,10 +30,9 @@
 
 import type { ComponentType, ReactNode } from 'react'
 import { ShowcaseApp } from './components/showcase-app.js'
-import { loadMeta } from './lib/load-meta.js'
 import type { JcMeta, JcPlugin } from './types.js'
 
-interface CreateShowcasePageOptions {
+export interface CreateShowcasePageOptions {
   /** Component metadata from meta.json — accepts raw JSON import (no cast needed) */
   meta: JcMeta | unknown
   /** Lazy component loaders from registry.ts */
@@ -61,8 +60,7 @@ interface CreateShowcasePageOptions {
  * export default createShowcasePage({ meta, registry })
  */
 export function createShowcasePage(options: CreateShowcasePageOptions) {
-  const { meta: rawMeta, registry, plugins, wrapper, initialComponent, syncUrl } = options
-  const meta = loadMeta(rawMeta) as JcMeta
+  const { meta, registry, plugins, wrapper, initialComponent, syncUrl } = options
 
   function JcShowcasePage() {
     return (

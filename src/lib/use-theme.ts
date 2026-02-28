@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { getPref, setPref } from './preferences.js'
 
 export type JcTheme = 'light' | 'dark'
 export type JcThemeMode = 'auto' | 'light' | 'dark'
@@ -10,6 +11,7 @@ export type JcThemeMode = 'auto' | 'light' | 'dark'
  *
  * Default: 'auto' — follows the host app's theme.
  * User can cycle through: auto → light → dark → auto.
+ * Persists the selected mode to localStorage.
  *
  * Always starts with 'light' during SSR to avoid hydration mismatches,
  * then detects the real theme in a client-side effect.
@@ -18,6 +20,12 @@ export function useTheme() {
   const [mode, setMode] = useState<JcThemeMode>('auto')
   // Always start 'light' to match SSR — detect real theme in useEffect
   const [detected, setDetected] = useState<JcTheme>('light')
+
+  // Restore persisted mode on mount
+  useEffect(() => {
+    const saved = getPref('themeMode')
+    if (saved) setMode(saved)
+  }, [])
 
   useEffect(() => {
     // Detect on mount
@@ -44,9 +52,9 @@ export function useTheme() {
 
   const cycle = useCallback(() => {
     setMode((prev) => {
-      if (prev === 'auto') return 'light'
-      if (prev === 'light') return 'dark'
-      return 'auto'
+      const next = prev === 'auto' ? 'light' : prev === 'light' ? 'dark' : 'auto'
+      setPref('themeMode', next)
+      return next
     })
   }, [])
 

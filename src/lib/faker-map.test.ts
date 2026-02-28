@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker'
 import { describe, expect, it } from 'vitest'
-import type { JcComponentMeta, JcPropMeta } from '../types.js'
+import { makeProp } from '../__test-utils__/factories.js'
+import type { JcComponentMeta } from '../types.js'
 import {
   generateFakeChildren,
   generateFakeValue,
@@ -9,22 +10,11 @@ import {
   resolveControlType,
 } from './faker-map.js'
 
-function makeProp(overrides: Partial<JcPropMeta> = {}): JcPropMeta {
-  return {
-    name: 'test',
-    type: 'string',
-    required: false,
-    description: '',
-    isChildren: false,
-    ...overrides,
-  }
-}
-
 // ── resolveControlType ────────────────────────────────────────
 
 describe('resolveControlType', () => {
   it('returns component for componentKind props', () => {
-    expect(resolveControlType(makeProp({ componentKind: 'icon' }))).toBe('component')
+    expect(resolveControlType(makeProp({ componentKind: 'element' }))).toBe('component')
   })
 
   it('returns select when values exist', () => {
@@ -46,6 +36,10 @@ describe('resolveControlType', () => {
   it('returns readonly for function types', () => {
     expect(resolveControlType(makeProp({ type: '() => void' }))).toBe('readonly')
     expect(resolveControlType(makeProp({ type: 'Function' }))).toBe('readonly')
+    // Parenthesized form from react-docgen-typescript
+    expect(resolveControlType(makeProp({ type: '(() => void)' }))).toBe('readonly')
+    // Event handler signatures
+    expect(resolveControlType(makeProp({ type: '(event: MouseEvent) => void' }))).toBe('readonly')
   })
 
   it('returns json for object/array types', () => {
@@ -126,9 +120,10 @@ describe('getArrayItemType', () => {
     expect(result?.isComponent).toBe(true)
   })
 
-  it('detects component item type from rawType', () => {
+  it('does not detect component from library-specific rawType', () => {
+    // Library-specific types (LucideIcon) are handled by plugins, not extraction
     const result = getArrayItemType(makeProp({ type: 'enum[]', rawType: 'LucideIcon[]' }))
-    expect(result?.isComponent).toBe(true)
+    expect(result?.isComponent).toBe(false)
   })
 
   it('detects non-component for plain types', () => {
@@ -141,7 +136,7 @@ describe('getArrayItemType', () => {
 
 describe('generateFakeValue', () => {
   it('returns undefined for component-kind props', () => {
-    expect(generateFakeValue('icon', makeProp({ componentKind: 'icon' }))).toBeUndefined()
+    expect(generateFakeValue('icon', makeProp({ componentKind: 'element' }))).toBeUndefined()
   })
 
   it('returns default value when available', () => {
@@ -449,7 +444,7 @@ describe('getArrayItemType — structured', () => {
         type: 'LucideIcon',
         optional: false,
         isComponent: true,
-        componentKind: 'icon' as const,
+        componentKind: 'element' as const,
       },
     ]
     const result = getArrayItemType(
@@ -515,7 +510,7 @@ describe('generateFakeValue — structured arrays', () => {
             type: 'LucideIcon',
             optional: false,
             isComponent: true,
-            componentKind: 'icon',
+            componentKind: 'element',
           },
         ],
       }),
@@ -577,7 +572,7 @@ describe('generateFakeValue — structured objects', () => {
             type: 'LucideIcon',
             optional: false,
             isComponent: true,
-            componentKind: 'icon',
+            componentKind: 'element',
           },
         ],
       }),
